@@ -1,0 +1,17 @@
+{
+  "name": "@kuboon/exif",
+  "version": "0.1.0",
+  "exports": {
+    ".": "./src/core.ts",
+    "./frontend": "./src/frontend.ts"
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@^0.226.0"
+  },
+  "publish": {
+    "include": [
+      "src"
+    ],
+    "exclude": [    ]
+  },
+}

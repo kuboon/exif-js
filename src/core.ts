@@ -1,197 +1,113 @@
-import { ExifTags, GPSTags, IFD1Tags, IptcFieldMap, StringValues, TiffTags } from "./constants";
+import { ExifTags, GPSTags, IFD1Tags, IptcFieldMap, StringValues, TiffTags } from "./constants.ts";
+import { getPartialDataView, getPartialString } from "./dataview.ts";
 
-export let debug = false;
-export let isXmpEnabled = false;
+let debug = false;
+export function enableDebug() {
+  debug = true;
+}
 
-type Rational = {
+export type Rational = {
   numerator: bigint;
   denominator: bigint;
 }
-function isRational(value: any): value is Rational {
-  return typeof value.numerator === 'bigint' && typeof value.denominator === 'bigint';
-}
 
-function imageHasData(img) {
-  return !!(img.exifdata);
-}
-
-
-function base64ToArrayBuffer(base64, contentType = null) {
-  contentType = contentType || base64.match(/^data\:([^\;]+)\;base64,/mi)[1] || ''; // e.g. 'data:image/jpeg;base64,...' => 'image/jpeg'
-  base64 = base64.replace(/^data\:([^\;]+)\;base64,/gmi, '');
-  const binary = atob(base64);
-  const len = binary.length;
-  const buffer = new ArrayBuffer(len);
-  const view = new Uint8Array(buffer);
-  for (let i = 0; i < len; i++) {
-    view[i] = binary.charCodeAt(i);
-  }
-  return buffer;
-}
-
-function objectURLToBlob(url, callback) {
-  const http = new XMLHttpRequest();
-  http.open("GET", url, true);
-  http.responseType = "blob";
-  http.onload = function (e) {
-    if (this.status == 200 || this.status === 0) {
-      callback(this.response);
-    }
-  };
-  http.send();
-}
-
-function getImageData(img, callback) {
-  function handleBinaryFile(binFile) {
-    const data = findEXIFinJPEG(binFile);
-    img.exifdata = data || {};
-    const iptcdata = findIPTCinJPEG(binFile);
-    img.iptcdata = iptcdata || {};
-    if (isXmpEnabled) {
-      const xmpdata = findXMPinJPEG(binFile);
-      img.xmpdata = xmpdata || {};
-    }
-    if (callback) {
-      callback.call(img);
-    }
-  }
-
-  if (img.src) {
-    if (/^data\:/i.test(img.src)) { // Data URI
-      const arrayBuffer = base64ToArrayBuffer(img.src);
-      handleBinaryFile(arrayBuffer);
-
-    } else if (/^blob\:/i.test(img.src)) { // Object URL
-      const fileReader = new FileReader();
-      fileReader.onload = function (e) {
-        handleBinaryFile(e.target!.result);
-      };
-      objectURLToBlob(img.src, function (blob) {
-        fileReader.readAsArrayBuffer(blob);
-      });
-    } else {
-      const http = new XMLHttpRequest();
-      http.onload = function () {
-        if (this.status == 200 || this.status === 0) {
-          handleBinaryFile(http.response);
-        } else {
-          throw "Could not load image";
-        }
-      };
-      http.open("GET", img.src, true);
-      http.responseType = "arraybuffer";
-      http.send(null);
-    }
-  } else if (self.FileReader && (img instanceof self.Blob || img instanceof self.File)) {
-    const fileReader = new FileReader();
-    fileReader.onload = function (e) {
-      if (debug) {
-        const result = e.target!.result;
-        if(typeof(result) === 'string') {
-          console.log("Got file of length " + result.length);
-        } else if(result instanceof ArrayBuffer) {
-          console.log("Got file of length " + result.byteLength);
-        } else {
-          console.log("Got file of unknown type");
-        }
-      }
-      handleBinaryFile(e.target!.result);
-    };
-
-    fileReader.readAsArrayBuffer(img);
-  }
-}
-
-function findEXIFinJPEG(file) {
-  const dataView = new DataView(file);
-
-  if (debug) console.log("Got file of length " + file.byteLength);
-  if ((dataView.getUint8(0) != 0xFF) || (dataView.getUint8(1) != 0xD8)) {
-    if (debug) console.log("Not a valid JPEG");
-    return false; // not a valid jpeg
-  }
-
-  const length = file.byteLength
+function* eachJfifSegments(dataview: DataView) {
+  const length = dataview.byteLength
   let offset = 2
 
   while (offset < length) {
-    if (dataView.getUint8(offset) != 0xFF) {
-      if (debug) console.log("Not a valid marker at offset " + offset + ", found: " + dataView.getUint8(offset));
-      return false; // not a valid marker, something is wrong
-    }
+    const marker = dataview.getUint16(offset)
+    const size = dataview.getUint16(offset + 2);
+    const segment = new DataView(dataview.buffer, dataview.byteOffset + offset + 4, size)
+    yield { marker, segment }
+    offset += 4 + size;
+  }
+}
 
-    const marker = dataView.getUint8(offset + 1);
-    if (debug) console.log(marker);
 
+export function findEXIFinJPEG(file: ArrayBufferLike) {
+  const jpeg = getJpegDataView(file);
+  if(!jpeg) return false
+
+  for(const { marker, segment } of eachJfifSegments(jpeg.v)) {
     // we could implement handling for other markers here,
     // but we're only looking for 0xFFE1 for EXIF data
-
-    if (marker == 225) {
+    if (marker == 0xFFE1) {
       if (debug) console.log("Found 0xFFE1 marker");
-
-      return readEXIFData(dataView, offset + 4);
-
-      // offset += 2 + file.getShortAt(offset+2, true);
-
-    } else {
-      offset += 2 + dataView.getUint16(offset + 2);
+      return readEXIFData(segment);
     }
-
   }
-
 }
 
-function findIPTCinJPEG(file) {
-  const dataView = new DataView(file);
+export function findIPTCinJPEG(file: ArrayBufferLike) {
+  const jpeg = getJpegDataView(file);
+  if(!jpeg) return false
 
-  if (debug) console.log("Got file of length " + file.byteLength);
-  if ((dataView.getUint8(0) != 0xFF) || (dataView.getUint8(1) != 0xD8)) {
+  const iptc = getPartialDataView(jpeg.v, new Uint8Array([0x38, 0x42, 0x49, 0x4D, 0x04, 0x04]));
+  if (!iptc) return false;
+  let nameHeaderLength = iptc.getUint8(7);
+  if (nameHeaderLength % 2 !== 0) nameHeaderLength += 1;
+  // Check for pre photoshop 6 format
+  if (nameHeaderLength === 0) {
+    // Always 4
+    nameHeaderLength = 4;
+  }
+
+  const startOffset = 8 + nameHeaderLength + 8;
+  const sectionLength = iptc.getUint16(nameHeaderLength + 6);
+
+  return readIPTCData(new DataView(iptc.buffer, iptc.byteOffset + startOffset, sectionLength));
+}
+
+export function findXMPinJPEG(file: ArrayBufferLike, fixXmlNs = false) {
+
+  const jpeg = getJpegDataView(file);
+  if(!jpeg) return false
+
+  const xpacketId = new TextEncoder().encode("W5M0MpCehiHzreSzNTczkc9d")
+  const xpacketDataView = getPartialDataView(jpeg.v, xpacketId)
+  if (!xpacketDataView) return null;
+
+  const rdfTag = { from: "<rdf:RDF ", to: "</rdf:RDF>" }
+  const xmpString = getPartialString(xpacketDataView, rdfTag)
+  if (!xmpString) return null;
+  if (!fixXmlNs) { return xmpString; }
+
+  return xmpString.replace(rdfTag.from, rdfTag.from +
+    + 'xmlns:Iptc4xmpCore="http://iptc.org/std/Iptc4xmpCore/1.0/xmlns/" '
+    + 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
+    + 'xmlns:tiff="http://ns.adobe.com/tiff/1.0/" '
+    + 'xmlns:plus="http://schemas.android.com/apk/lib/com.google.android.gms.plus" '
+    + 'xmlns:ext="http://www.gettyimages.com/xsltExtension/1.0" '
+    + 'xmlns:exif="http://ns.adobe.com/exif/1.0/" '
+    + 'xmlns:stEvt="http://ns.adobe.com/xap/1.0/sType/ResourceEvent#" '
+    + 'xmlns:stRef="http://ns.adobe.com/xap/1.0/sType/ResourceRef#" '
+    + 'xmlns:crs="http://ns.adobe.com/camera-raw-settings/1.0/" '
+    + 'xmlns:xapGImg="http://ns.adobe.com/xap/1.0/g/img/" '
+    + 'xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/" '
+  )
+}
+
+type JpegDataView = {
+  type: "JpegDataView",
+  v: DataView
+}
+
+function getJpegDataView(buf: ArrayBufferLike): JpegDataView | false {
+  if (debug) console.log("Got file of length " + buf.byteLength);
+
+  const dataView = new DataView(buf);
+  if (dataView.getUint16(0) != 0xFFD8) {
     if (debug) console.log("Not a valid JPEG");
-    return false; // not a valid jpeg
+    return false;
   }
-
-  const length = file.byteLength;
-  let offset = 2
-
-  const isFieldSegmentStart = function (dataView, offset) {
-    return (
-      dataView.getUint8(offset) === 0x38 &&
-      dataView.getUint8(offset + 1) === 0x42 &&
-      dataView.getUint8(offset + 2) === 0x49 &&
-      dataView.getUint8(offset + 3) === 0x4D &&
-      dataView.getUint8(offset + 4) === 0x04 &&
-      dataView.getUint8(offset + 5) === 0x04
-    );
-  };
-
-  while (offset < length) {
-
-    if (isFieldSegmentStart(dataView, offset)) {
-
-      // Get the length of the name header (which is padded to an even number of bytes)
-      let nameHeaderLength = dataView.getUint8(offset + 7);
-      if (nameHeaderLength % 2 !== 0) nameHeaderLength += 1;
-      // Check for pre photoshop 6 format
-      if (nameHeaderLength === 0) {
-        // Always 4
-        nameHeaderLength = 4;
-      }
-
-      const startOffset = offset + 8 + nameHeaderLength;
-      const sectionLength = dataView.getUint16(offset + 6 + nameHeaderLength);
-
-      return readIPTCData(file, startOffset, sectionLength);
-    }
-
-    // Not the marker, continue searching
-    offset++;
-  }
+  return { type: "JpegDataView", v: dataView }
 }
-function readIPTCData(file, startOffset, sectionLength) {
-  const dataView = new DataView(file);
-  const data = {};
-  let segmentStartPos = startOffset;
-  while (segmentStartPos < startOffset + sectionLength) {
+
+function readIPTCData(dataView: DataView) {
+  const data: Record<string, any> = {};
+  let segmentStartPos = 0;
+  while (segmentStartPos < dataView.byteLength) {
     if (dataView.getUint8(segmentStartPos) === 0x1C && dataView.getUint8(segmentStartPos + 1) === 0x02) {
       const segmentType = dataView.getUint8(segmentStartPos + 2);
       if (segmentType in IptcFieldMap) {
@@ -199,7 +115,7 @@ function readIPTCData(file, startOffset, sectionLength) {
         const fieldName = IptcFieldMap[segmentType];
         const fieldValue = getStringFromDB(dataView, segmentStartPos + 5, dataSize);
         // Check if we already stored a value with this name
-        if (data.hasOwnProperty(fieldName)) {
+        if (Object.hasOwn(data, fieldName)) {
           // Value already stored with this name, create multivalue field
           if (data[fieldName] instanceof Array) {
             data[fieldName].push(fieldValue);
@@ -219,9 +135,7 @@ function readIPTCData(file, startOffset, sectionLength) {
   return data;
 }
 
-
-
-function readTags(file, tiffStart, dirStart, strings, bigEnd) {
+function readTags(file: DataView, tiffStart: number, dirStart: number, strings, bigEnd) {
   const entries = file.getUint16(dirStart, !bigEnd),
     tags: Record<string, any> = {}
 
@@ -233,7 +147,6 @@ function readTags(file, tiffStart, dirStart, strings, bigEnd) {
   }
   return tags;
 }
-
 
 function readTagValue(file, entryOffset, tiffStart, dirStart, bigEnd) {
   const type = file.getUint16(entryOffset + 2, !bigEnd),
@@ -254,9 +167,10 @@ function readTagValue(file, entryOffset, tiffStart, dirStart, bigEnd) {
         return vals;
       }
 
-    case 2: // ascii, 8-bit byte
+    case 2: { // ascii, 8-bit byte
       const offset = numValues > 4 ? valueOffset : (entryOffset + 8);
       return getStringFromDB(file, offset, numValues - 1);
+    }
 
     case 3: // short, 16 bit int
       if (numValues == 1) {
@@ -324,7 +238,7 @@ function readTagValue(file, entryOffset, tiffStart, dirStart, bigEnd) {
 * Given an IFD (Image File Directory) start offset
 * returns an offset to next IFD or 0 if it's the last IFD.
 */
-function getNextIFDOffset(dataView, dirStart, bigEnd) {
+function getNextIFDOffset(dataView: DataView, dirStart, bigEnd) {
   //the first 2bytes means the number of directory entries contains in this IFD
   const entries = dataView.getUint16(dirStart, !bigEnd);
 
@@ -388,49 +302,45 @@ function readThumbnailImage(dataView, tiffStart, firstIFDOffset, bigEnd) {
   return thumbTags;
 }
 
-function getStringFromDB(buffer, start, length) {
-  const outstr: string[] = [];
-  for (let n = start; n < start + length; n++) {
-    outstr.push(String.fromCharCode(buffer.getUint8(n)));
-  }
-  return outstr.join("");
+function getStringFromDB(buffer: DataView, offset: number, length: number) {
+  return getPartialString(buffer, { offset, length });
 }
 
-function readEXIFData(file, start) {
-  if (getStringFromDB(file, start, 4) != "Exif") {
+function readEXIFData(segment: DataView) {
+  if (getStringFromDB(segment, 0, 4) != "Exif") {
     if (debug) console.log("Not valid EXIF data! " + getStringFromDB(file, start, 4));
     return false;
   }
 
-  const tiffOffset = start + 6;
+  const tiffOffset = 6;
   let bigEnd
 
   // test for TIFF validity and endianness
-  if (file.getUint16(tiffOffset) == 0x4949) {
+  if (segment.getUint16(tiffOffset) == 0x4949) {
     bigEnd = false;
-  } else if (file.getUint16(tiffOffset) == 0x4D4D) {
+  } else if (segment.getUint16(tiffOffset) == 0x4D4D) {
     bigEnd = true;
   } else {
     if (debug) console.log("Not valid TIFF data! (no 0x4949 or 0x4D4D)");
     return false;
   }
 
-  if (file.getUint16(tiffOffset + 2, !bigEnd) != 0x002A) {
+  if (segment.getUint16(tiffOffset + 2, !bigEnd) != 0x002A) {
     if (debug) console.log("Not valid TIFF data! (no 0x002A)");
     return false;
   }
 
-  const firstIFDOffset = file.getUint32(tiffOffset + 4, !bigEnd);
+  const firstIFDOffset = segment.getUint32(tiffOffset + 4, !bigEnd);
 
   if (firstIFDOffset < 0x00000008) {
-    if (debug) console.log("Not valid TIFF data! (First offset less than 8)", file.getUint32(tiffOffset + 4, !bigEnd));
+    if (debug) console.log("Not valid TIFF data! (First offset less than 8)", segment.getUint32(tiffOffset + 4, !bigEnd));
     return false;
   }
 
-  const tags = readTags(file, tiffOffset, tiffOffset + firstIFDOffset, TiffTags, bigEnd);
+  const tags = readTags(segment, tiffOffset, tiffOffset + firstIFDOffset, TiffTags, bigEnd);
 
   if (tags.ExifIFDPointer) {
-    const exifData = readTags(file, tiffOffset, tiffOffset + tags.ExifIFDPointer, ExifTags, bigEnd);
+    const exifData = readTags(segment, tiffOffset, tiffOffset + tags.ExifIFDPointer, ExifTags, bigEnd);
     for (const tag in exifData) {
       switch (tag) {
         case "LightSource":
@@ -469,7 +379,7 @@ function readEXIFData(file, start) {
   }
 
   if (tags.GPSInfoIFDPointer) {
-    const gpsData = readTags(file, tiffOffset, tiffOffset + tags.GPSInfoIFDPointer, GPSTags, bigEnd);
+    const gpsData = readTags(segment, tiffOffset, tiffOffset + tags.GPSInfoIFDPointer, GPSTags, bigEnd);
     for (const tag in gpsData) {
       switch (tag) {
         case "GPSVersionID":
@@ -484,209 +394,8 @@ function readEXIFData(file, start) {
   }
 
   // extract thumbnail
-  tags['thumbnail'] = readThumbnailImage(file, tiffOffset, firstIFDOffset, bigEnd);
+  tags['thumbnail'] = readThumbnailImage(segment, tiffOffset, firstIFDOffset, bigEnd);
 
   return tags;
-}
-
-function findXMPinJPEG(file) {
-
-  if (!('DOMParser' in self)) {
-    // console.warn('XML parsing not supported without DOMParser');
-    return;
-  }
-  const dataView = new DataView(file);
-
-  if (debug) console.log("Got file of length " + file.byteLength);
-  if ((dataView.getUint8(0) != 0xFF) || (dataView.getUint8(1) != 0xD8)) {
-    if (debug) console.log("Not a valid JPEG");
-    return false; // not a valid jpeg
-  }
-
-  let offset = 2
-  const length = file.byteLength,
-    dom = new DOMParser();
-
-  while (offset < (length - 4)) {
-    if (getStringFromDB(dataView, offset, 4) == "http") {
-      const startOffset = offset - 1;
-      const sectionLength = dataView.getUint16(offset - 2) - 1;
-      let xmpString = getStringFromDB(dataView, startOffset, sectionLength)
-      const xmpEndIndex = xmpString.indexOf('xmpmeta>') + 8;
-      xmpString = xmpString.substring(xmpString.indexOf('<x:xmpmeta'), xmpEndIndex);
-
-      const indexOfXmp = xmpString.indexOf('x:xmpmeta') + 10
-      //Many custom written programs embed xmp/xml without any namespace. Following are some of them.
-      //Without these namespaces, XML is thought to be invalid by parsers
-      xmpString = xmpString.slice(0, indexOfXmp)
-        + 'xmlns:Iptc4xmpCore="http://iptc.org/std/Iptc4xmpCore/1.0/xmlns/" '
-        + 'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
-        + 'xmlns:tiff="http://ns.adobe.com/tiff/1.0/" '
-        + 'xmlns:plus="http://schemas.android.com/apk/lib/com.google.android.gms.plus" '
-        + 'xmlns:ext="http://www.gettyimages.com/xsltExtension/1.0" '
-        + 'xmlns:exif="http://ns.adobe.com/exif/1.0/" '
-        + 'xmlns:stEvt="http://ns.adobe.com/xap/1.0/sType/ResourceEvent#" '
-        + 'xmlns:stRef="http://ns.adobe.com/xap/1.0/sType/ResourceRef#" '
-        + 'xmlns:crs="http://ns.adobe.com/camera-raw-settings/1.0/" '
-        + 'xmlns:xapGImg="http://ns.adobe.com/xap/1.0/g/img/" '
-        + 'xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/" '
-        + xmpString.slice(indexOfXmp)
-
-      const domDocument = dom.parseFromString(xmpString, 'text/xml');
-      return xml2Object(domDocument);
-    } else {
-      offset++;
-    }
-  }
-}
-
-function xml2json(xml) {
-  const json = {};
-
-  if (xml.nodeType == 1) { // element node
-    if (xml.attributes.length > 0) {
-      json['@attributes'] = {};
-      for (const attribute of xml.attributes) {
-        json['@attributes'][attribute.nodeName] = attribute.nodeValue;
-      }
-    }
-  } else if (xml.nodeType == 3) { // text node
-    return xml.nodeValue;
-  }
-
-  // deal with children
-  if (xml.hasChildNodes()) {
-    for (const child of xml.childNodes) {
-      const nodeName = child.nodeName;
-      if (json[nodeName] == null) {
-        json[nodeName] = xml2json(child);
-      } else {
-        if (json[nodeName].push == null) {
-          const old = json[nodeName];
-          json[nodeName] = [];
-          json[nodeName].push(old);
-        }
-        json[nodeName].push(xml2json(child));
-      }
-    }
-  }
-
-  return json;
-}
-
-function xml2Object(xml) {
-  try {
-    const obj = {};
-    if (xml.children.length > 0) {
-      for (const item of xml.children) {
-        const attributes = item.attributes;
-        for (const idx in attributes) {
-          const itemAtt = attributes[idx];
-          const dataKey = itemAtt.nodeName;
-          const dataValue = itemAtt.nodeValue;
-
-          if (dataKey !== undefined) {
-            obj[dataKey] = dataValue;
-          }
-        }
-        const nodeName = item.nodeName;
-
-        if (typeof (obj[nodeName]) == "undefined") {
-          obj[nodeName] = xml2json(item);
-        } else {
-          if (typeof (obj[nodeName].push) == "undefined") {
-            const old = obj[nodeName];
-
-            obj[nodeName] = [];
-            obj[nodeName].push(old);
-          }
-          obj[nodeName].push(xml2json(item));
-        }
-      }
-    } else {
-      return xml.textContent;
-    }
-    return obj;
-  } catch (e) {
-    console.log(e.message);
-  }
-}
-
-export const getData = function (img, callback) {
-  if (((self.Image && img instanceof self.Image)
-    || (self.HTMLImageElement && img instanceof self.HTMLImageElement))
-    && !img.complete)
-    return false;
-
-  if (!imageHasData(img)) {
-    getImageData(img, callback);
-  } else {
-    if (callback) {
-      callback.call(img);
-    }
-  }
-  return true;
-}
-
-export const getTag = function (img, tag) {
-  if (!imageHasData(img)) return;
-  return img.exifdata[tag];
-}
-
-export const getIptcTag = function (img, tag) {
-  if (!imageHasData(img)) return;
-  return img.iptcdata[tag];
-}
-
-export const getAllTags = function (img) {
-  if (!imageHasData(img)) return {};
-  const
-    data = img.exifdata,
-    tags = {};
-  for (const a in data) {
-    if (data.hasOwnProperty(a)) {
-      tags[a] = data[a];
-    }
-  }
-  return tags;
-}
-
-export const getAllIptcTags = function (img) {
-  if (!imageHasData(img)) return {};
-  const
-    data = img.iptcdata,
-    tags = {};
-  for (const a in data) {
-    if (data.hasOwnProperty(a)) {
-      tags[a] = data[a];
-    }
-  }
-  return tags;
-}
-
-export const pretty = function (img) {
-  if (!imageHasData(img)) return "";
-  const
-    data = img.exifdata,
-    strPretty: string[] = [];
-  for (const a in data) {
-    if (data.hasOwnProperty(a)) {
-      if (typeof data[a] == "object") {
-        if (isRational(data[a])) {
-          const num = data[a].numerator / data[a].denominator;
-          strPretty.push(a + " : " + num + " [" + data[a].numerator + "/" + data[a].denominator + "]\r\n");
-        } else {
-          strPretty.push(a + " : [" + data[a].length + " values]\r\n");
-        }
-      } else {
-        strPretty.push(a + " : " + data[a] + "\r\n");
-      }
-    }
-  }
-  return strPretty.join("");
-}
-
-export const readFromBinaryFile = function (file) {
-  return findEXIFinJPEG(file);
 }
 

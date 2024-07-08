@@ -1,4 +1,4 @@
-export const ExifTags = {
+export const ExifTags: Record<number, string> = {
   // version tags
   0x9000: "ExifVersion",             // EXIF version
   0xA000: "FlashpixVersion",         // Flashpix format version
@@ -73,7 +73,7 @@ export const ExifTags = {
   0xA420: "ImageUniqueID"            // Identifier assigned uniquely to each image
 };
 
-export const TiffTags = {
+export const TiffTags: Record<number, string> = {
   0x0100: "ImageWidth",
   0x0101: "ImageHeight",
   0x8769: "ExifIFDPointer",
@@ -109,7 +109,7 @@ export const TiffTags = {
   0x8298: "Copyright"
 };
 
-export const GPSTags = {
+export const GPSTags: Record<number, string> = {
   0x0000: "GPSVersionID",
   0x0001: "GPSLatitudeRef",
   0x0002: "GPSLatitude",
@@ -144,7 +144,7 @@ export const GPSTags = {
 };
 
 // EXIF 2.3 Spec
-export const IFD1Tags = {
+export const IFD1Tags: Record<number, string> = {
   0x0100: "ImageWidth",
   0x0101: "ImageHeight",
   0x0102: "BitsPerSample",
@@ -304,7 +304,7 @@ export const StringValues = {
     6: "B"
   }
 };
-export const IptcFieldMap = {
+export const IptcFieldMap: Record<number, string> = {
   0x78: 'caption',
   0x6E: 'credit',
   0x19: 'keywords',
