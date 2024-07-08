@@ -34,6 +34,11 @@ export function findEXIFinJPEG(file: ArrayBufferLike) {
     // but we're only looking for 0xFFE1 for EXIF data
     if (marker == 0xFFE1) {
       if (debug) console.log("Found 0xFFE1 marker");
+      const keyword = getPartialString(segment, { offset: 0, length: 4 })
+      if (keyword !== "Exif") {
+        if (debug) console.log("Not valid EXIF data! was " + keyword);
+        return false;
+      }
       return readEXIFData(segment);
     }
   }
@@ -135,29 +140,29 @@ function readIPTCData(dataView: DataView) {
   return data;
 }
 
-function readTags(file: DataView, tiffStart: number, dirStart: number, strings, bigEnd) {
-  const entries = file.getUint16(dirStart, !bigEnd),
+function readTags(file: DataView, tiffStart: number, dirStart: number, strings, littleEndian) {
+  const entries = file.getUint16(dirStart, littleEndian),
     tags: Record<string, any> = {}
 
   for (let i = 0; i < entries; i++) {
     const entryOffset = dirStart + i * 12 + 2;
-    const tag = strings[file.getUint16(entryOffset, !bigEnd)];
-    if (!tag && debug) console.log("Unknown tag: " + file.getUint16(entryOffset, !bigEnd));
-    tags[tag] = readTagValue(file, entryOffset, tiffStart, dirStart, bigEnd);
+    const tag = strings[file.getUint16(entryOffset, littleEndian)];
+    if (!tag && debug) console.log("Unknown tag: " + file.getUint16(entryOffset, littleEndian));
+    tags[tag] = readTagValue(file, entryOffset, tiffStart, dirStart, littleEndian);
   }
   return tags;
 }
 
-function readTagValue(file, entryOffset, tiffStart, dirStart, bigEnd) {
-  const type = file.getUint16(entryOffset + 2, !bigEnd),
-    numValues = file.getUint32(entryOffset + 4, !bigEnd),
-    valueOffset = file.getUint32(entryOffset + 8, !bigEnd) + tiffStart
+function readTagValue(file, entryOffset, tiffStart, dirStart, littleEndian) {
+  const type = file.getUint16(entryOffset + 2, littleEndian),
+    numValues = file.getUint32(entryOffset + 4, littleEndian),
+    valueOffset = file.getUint32(entryOffset + 8, littleEndian) + tiffStart
 
   switch (type) {
     case 1: // byte, 8-bit unsigned int
     case 7: // undefined, 8-bit byte, value depending on field
       if (numValues == 1) {
-        return file.getUint8(entryOffset + 8, !bigEnd);
+        return file.getUint8(entryOffset + 8, littleEndian);
       } else {
         const offset = numValues > 4 ? valueOffset : (entryOffset + 8);
         const vals: any[] = [];
@@ -174,37 +179,37 @@ function readTagValue(file, entryOffset, tiffStart, dirStart, bigEnd) {
 
     case 3: // short, 16 bit int
       if (numValues == 1) {
-        return file.getUint16(entryOffset + 8, !bigEnd);
+        return file.getUint16(entryOffset + 8, littleEndian);
       } else {
         const offset = numValues > 2 ? valueOffset : (entryOffset + 8);
         const vals: any[] = [];
         for (let n = 0; n < numValues; n++) {
-          vals[n] = file.getUint16(offset + 2 * n, !bigEnd);
+          vals[n] = file.getUint16(offset + 2 * n, littleEndian);
         }
         return vals;
       }
 
     case 4: // long, 32 bit int
       if (numValues == 1) {
-        return file.getUint32(entryOffset + 8, !bigEnd);
+        return file.getUint32(entryOffset + 8, littleEndian);
       } else {
         const vals: any[] = [];
         for (let n = 0; n < numValues; n++) {
-          vals[n] = file.getUint32(valueOffset + 4 * n, !bigEnd);
+          vals[n] = file.getUint32(valueOffset + 4 * n, littleEndian);
         }
         return vals;
       }
 
     case 5:    // rational = two long values, first is numerator, second is denominator
       if (numValues == 1) {
-        const numerator = file.getUint32(valueOffset, !bigEnd);
-        const denominator = file.getUint32(valueOffset + 4, !bigEnd);
+        const numerator = file.getUint32(valueOffset, littleEndian);
+        const denominator = file.getUint32(valueOffset + 4, littleEndian);
         return { numerator, denominator } as Rational;
       } else {
         const vals: Rational[] = [];
         for (let n = 0; n < numValues; n++) {
-          const numerator = file.getUint32(valueOffset + 8 * n, !bigEnd);
-          const denominator = file.getUint32(valueOffset + 4 + 8 * n, !bigEnd);
+          const numerator = file.getUint32(valueOffset + 8 * n, littleEndian);
+          const denominator = file.getUint32(valueOffset + 4 + 8 * n, littleEndian);
           vals[n] = { numerator, denominator }
         }
         return vals;
@@ -212,22 +217,22 @@ function readTagValue(file, entryOffset, tiffStart, dirStart, bigEnd) {
 
     case 9: // slong, 32 bit signed int
       if (numValues == 1) {
-        return file.getInt32(entryOffset + 8, !bigEnd);
+        return file.getInt32(entryOffset + 8, littleEndian);
       } else {
         const vals: any[] = [];
         for (let n = 0; n < numValues; n++) {
-          vals[n] = file.getInt32(valueOffset + 4 * n, !bigEnd);
+          vals[n] = file.getInt32(valueOffset + 4 * n, littleEndian);
         }
         return vals;
       }
 
     case 10: // signed rational, two slongs, first is numerator, second is denominator
       if (numValues == 1) {
-        return file.getInt32(valueOffset, !bigEnd) / file.getInt32(valueOffset + 4, !bigEnd);
+        return file.getInt32(valueOffset, littleEndian) / file.getInt32(valueOffset + 4, littleEndian);
       } else {
         const vals: any[] = [];
         for (let n = 0; n < numValues; n++) {
-          vals[n] = file.getInt32(valueOffset + 8 * n, !bigEnd) / file.getInt32(valueOffset + 4 + 8 * n, !bigEnd);
+          vals[n] = file.getInt32(valueOffset + 8 * n, littleEndian) / file.getInt32(valueOffset + 4 + 8 * n, littleEndian);
         }
         return vals;
       }
@@ -238,20 +243,20 @@ function readTagValue(file, entryOffset, tiffStart, dirStart, bigEnd) {
 * Given an IFD (Image File Directory) start offset
 * returns an offset to next IFD or 0 if it's the last IFD.
 */
-function getNextIFDOffset(dataView: DataView, dirStart, bigEnd) {
+function getNextIFDOffset(dataView: DataView, dirStart, littleEndian) {
   //the first 2bytes means the number of directory entries contains in this IFD
-  const entries = dataView.getUint16(dirStart, !bigEnd);
+  const entries = dataView.getUint16(dirStart, littleEndian);
 
   // After last directory entry, there is a 4bytes of data,
   // it means an offset to next IFD.
   // If its value is '0x00000000', it means this is the last IFD and there is no linked IFD.
 
-  return dataView.getUint32(dirStart + 2 + entries * 12, !bigEnd); // each entry is 12 bytes long
+  return dataView.getUint32(dirStart + 2 + entries * 12, littleEndian); // each entry is 12 bytes long
 }
 
-function readThumbnailImage(dataView, tiffStart, firstIFDOffset, bigEnd) {
+function readThumbnailImage(dataView, tiffStart, firstIFDOffset, littleEndian) {
   // get the IFD1 offset
-  const IFD1OffsetPointer = getNextIFDOffset(dataView, tiffStart + firstIFDOffset, bigEnd);
+  const IFD1OffsetPointer = getNextIFDOffset(dataView, tiffStart + firstIFDOffset, littleEndian);
 
   if (!IFD1OffsetPointer) {
     // console.log('******** IFD1Offset is empty, image thumb not found ********');
@@ -263,7 +268,7 @@ function readThumbnailImage(dataView, tiffStart, firstIFDOffset, bigEnd) {
   }
   // console.log('*******  thumbnail IFD offset (IFD1) is: %s', IFD1OffsetPointer);
 
-  const thumbTags = readTags(dataView, tiffStart, tiffStart + IFD1OffsetPointer, IFD1Tags, bigEnd)
+  const thumbTags = readTags(dataView, tiffStart, tiffStart + IFD1OffsetPointer, IFD1Tags, littleEndian)
 
   // EXIF 2.3 specification for JPEG format thumbnail
 
@@ -307,40 +312,35 @@ function getStringFromDB(buffer: DataView, offset: number, length: number) {
 }
 
 function readEXIFData(segment: DataView) {
-  if (getStringFromDB(segment, 0, 4) != "Exif") {
-    if (debug) console.log("Not valid EXIF data! " + getStringFromDB(file, start, 4));
-    return false;
-  }
-
   const tiffOffset = 6;
-  let bigEnd
+  let littleEndian
 
   // test for TIFF validity and endianness
   if (segment.getUint16(tiffOffset) == 0x4949) {
-    bigEnd = false;
+    littleEndian = true;
   } else if (segment.getUint16(tiffOffset) == 0x4D4D) {
-    bigEnd = true;
+    littleEndian = false;
   } else {
     if (debug) console.log("Not valid TIFF data! (no 0x4949 or 0x4D4D)");
     return false;
   }
 
-  if (segment.getUint16(tiffOffset + 2, !bigEnd) != 0x002A) {
+  if (segment.getUint16(tiffOffset + 2, littleEndian) != 0x002A) {
     if (debug) console.log("Not valid TIFF data! (no 0x002A)");
     return false;
   }
 
-  const firstIFDOffset = segment.getUint32(tiffOffset + 4, !bigEnd);
+  const firstIFDOffset = segment.getUint32(tiffOffset + 4, littleEndian);
 
   if (firstIFDOffset < 0x00000008) {
-    if (debug) console.log("Not valid TIFF data! (First offset less than 8)", segment.getUint32(tiffOffset + 4, !bigEnd));
+    if (debug) console.log("Not valid TIFF data! (First offset less than 8)", segment.getUint32(tiffOffset + 4, littleEndian));
     return false;
   }
 
-  const tags = readTags(segment, tiffOffset, tiffOffset + firstIFDOffset, TiffTags, bigEnd);
+  const tags = readTags(segment, tiffOffset, tiffOffset + firstIFDOffset, TiffTags, littleEndian);
 
   if (tags.ExifIFDPointer) {
-    const exifData = readTags(segment, tiffOffset, tiffOffset + tags.ExifIFDPointer, ExifTags, bigEnd);
+    const exifData = readTags(segment, tiffOffset, tiffOffset + tags.ExifIFDPointer, ExifTags, littleEndian);
     for (const tag in exifData) {
       switch (tag) {
         case "LightSource":
@@ -379,7 +379,7 @@ function readEXIFData(segment: DataView) {
   }
 
   if (tags.GPSInfoIFDPointer) {
-    const gpsData = readTags(segment, tiffOffset, tiffOffset + tags.GPSInfoIFDPointer, GPSTags, bigEnd);
+    const gpsData = readTags(segment, tiffOffset, tiffOffset + tags.GPSInfoIFDPointer, GPSTags, littleEndian);
     for (const tag in gpsData) {
       switch (tag) {
         case "GPSVersionID":
@@ -394,7 +394,7 @@ function readEXIFData(segment: DataView) {
   }
 
   // extract thumbnail
-  tags['thumbnail'] = readThumbnailImage(segment, tiffOffset, firstIFDOffset, bigEnd);
+  tags['thumbnail'] = readThumbnailImage(segment, tiffOffset, firstIFDOffset, littleEndian);
 
   return tags;
 }
