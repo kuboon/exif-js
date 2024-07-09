@@ -1,3 +1,8 @@
+let debug = false;
+export function enableDebug() {
+  debug = true;
+}
+
 interface BrandedDataView {
   type: string;
   v: DataView;
@@ -10,6 +15,18 @@ export const Types = {
 export interface JpegDataView extends BrandedDataView {
   type: typeof Types.JpegDataView;
 }
+
+export function getJpegDataView(buf: ArrayBufferLike): JpegDataView | false {
+  if (debug) console.log("Got file of length " + buf.byteLength);
+
+  const dataView = new DataView(buf);
+  if (dataView.getUint16(0) != 0xFFD8) {
+    if (debug) console.log("Not a valid JPEG");
+    return false;
+  }
+  return { type: "JpegDataView", v: dataView }
+}
+
 
 function scanBinInDataView(dataView: DataView, bin: Uint8Array, startFrom = 0) {
   const first2bytes = bin[0] * 0x100 + bin[1];
@@ -28,7 +45,10 @@ function scanBinInDataView(dataView: DataView, bin: Uint8Array, startFrom = 0) {
   return -1;
 }
 
-export function getPartialDataView(dataView: DataView, from: Uint8Array, to?: Uint8Array) {
+export function partialDataView(dataView: DataView, offset: number, length: number = dataView.byteLength - offset) {
+  return new DataView(dataView.buffer, dataView.byteOffset + offset, length);
+}
+export function scanPartialDataView(dataView: DataView, from: Uint8Array, to?: Uint8Array) {
   const fromIdx = scanBinInDataView(dataView, from);
   if (fromIdx < 0) return null;
   if (!to) return new DataView(dataView.buffer, fromIdx);
@@ -50,5 +70,5 @@ export function getPartialString(dataView: DataView, opts: PartialStringOptions)
     offset = opts.offset;
     length = opts.length;
   }
-  return new TextDecoder().decode(new DataView(dataView.buffer, dataView.byteOffset + offset, length))
+  return new TextDecoder().decode(partialDataView(dataView, offset, length))
 }

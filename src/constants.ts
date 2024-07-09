@@ -1,4 +1,5 @@
-export const ExifTags: Record<number, string> = {
+export type NumDict = Record<number, string>;
+export const ExifTags: NumDict = {
   // version tags
   0x9000: "ExifVersion",             // EXIF version
   0xA000: "FlashpixVersion",         // Flashpix format version
@@ -73,7 +74,7 @@ export const ExifTags: Record<number, string> = {
   0xA420: "ImageUniqueID"            // Identifier assigned uniquely to each image
 };
 
-export const TiffTags: Record<number, string> = {
+export const TiffTags: NumDict = {
   0x0100: "ImageWidth",
   0x0101: "ImageHeight",
   0x8769: "ExifIFDPointer",
@@ -109,7 +110,7 @@ export const TiffTags: Record<number, string> = {
   0x8298: "Copyright"
 };
 
-export const GPSTags: Record<number, string> = {
+export const GPSTags: NumDict = {
   0x0000: "GPSVersionID",
   0x0001: "GPSLatitudeRef",
   0x0002: "GPSLatitude",
@@ -144,7 +145,7 @@ export const GPSTags: Record<number, string> = {
 };
 
 // EXIF 2.3 Spec
-export const IFD1Tags: Record<number, string> = {
+export const IFD1Tags: NumDict = {
   0x0100: "ImageWidth",
   0x0101: "ImageHeight",
   0x0102: "BitsPerSample",
@@ -167,7 +168,7 @@ export const IFD1Tags: Record<number, string> = {
   0x0214: "ReferenceBlackWhite"
 };
 
-export const StringValues = {
+export const StringValues: Record<string, NumDict> = {
   ExposureProgram: {
     0: "Not defined",
     1: "Manual",
@@ -303,16 +304,4 @@ export const StringValues = {
     5: "G",
     6: "B"
   }
-};
-export const IptcFieldMap: Record<number, string> = {
-  0x78: 'caption',
-  0x6E: 'credit',
-  0x19: 'keywords',
-  0x37: 'dateCreated',
-  0x50: 'byline',
-  0x55: 'bylineTitle',
-  0x7A: 'captionWriter',
-  0x69: 'headline',
-  0x74: 'copyright',
-  0x0F: 'category'
 };
