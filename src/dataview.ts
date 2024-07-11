@@ -45,7 +45,7 @@ function scanBinInDataView(dataView: DataView, bin: Uint8Array, startFrom = 0) {
   return -1;
 }
 
-export function partialDataView(dataView: DataView, offset: number, length: number = dataView.byteLength - offset) {
+export function partialDataView(dataView: DataView, offset: number, length?: number) {
   return new DataView(dataView.buffer, dataView.byteOffset + offset, length);
 }
 export function scanPartialDataView(dataView: DataView, from: Uint8Array, to?: Uint8Array) {
