@@ -1,10 +1,22 @@
 import { assertEquals } from "@std/assert";
 import { getEXIFinJPEG } from "./src/exif.ts";
+import { getEXIFrawTagsInJPEG } from "./src/raw_exif.ts";
 import { getIPTCinJPEG } from "./src/iptc.ts";
 import { getXMPinJPEG } from "./src/xmp.ts";
 
 const testjpg = new URL("./spec/test.jpg", import.meta.url);
 const bin = await Deno.readFile(testjpg);
+
+Deno.test({
+  name: "getEXIFrawTagsInJPEG",
+  // only: true,
+  fn: () => {
+    const ret = getEXIFrawTagsInJPEG(bin.buffer)!;
+    // assertEquals(Object.keys(ret).length, 45)
+    // assertEquals(ret["ExifVersion"], "0230");
+    console.log(ret);
+  }
+})
 Deno.test("findEXIFinJPEG", () => {
   const ret = getEXIFinJPEG(bin.buffer)!;
   assertEquals(Object.keys(ret).length, 45)

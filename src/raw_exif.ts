@@ -1,4 +1,5 @@
 // https://www.media.mit.edu/pia/Research/deepview/exif.html
+import { ExifTags, TiffTags } from "./constants.ts";
 import { getPartialString, partialDataView, getJpegDataView } from "./dataview.ts";
 
 let debug = false;
@@ -29,8 +30,8 @@ export function getEXIFrawTagsInJPEG(buf: ArrayBufferLike) {
   }
 }
 
-function readRawTags(segment: DataView) {
-  const endianMarker = segment.getUint16(0);
+function readRawTags(ifd: DataView) {
+  const endianMarker = ifd.getUint16(0);
   const littleEndian =
     endianMarker == 0x4949 ? true :
     endianMarker == 0x4D4D ? false :
@@ -39,19 +40,21 @@ function readRawTags(segment: DataView) {
     throw new Error("Invalid byte align (no 0x4949 or 0x4D4D)");
   }
 
-  if (segment.getUint16(2, littleEndian) != 0x002A) {
+  if (ifd.getUint16(2, littleEndian) != 0x002A) {
     throw new Error("Invalid TIFF Header (No 0x002A)");
   }
-  const firstIFDOffset = segment.getUint32(4, littleEndian);
+  const firstIFDOffset = ifd.getUint32(4, littleEndian);
   if (firstIFDOffset < 0x00000008) {
     throw new Error("Invalid TIFF Header (First offset less than 8)");
   }
 
-  const ifdIter = eachIFD(partialDataView(segment, firstIFDOffset), littleEndian);
-  const ifd0 = ifdIter.next().value!;
-  const rawTags = [...eachEntryInIFD(ifd0, littleEndian)]
-  const ifd1 = ifdIter.next().value!; // thumbnail IFD
-  const thumbnail = readThumbnail(ifd1, littleEndian);
+  const ifdIter = eachIFDoffset(ifd, firstIFDOffset, littleEndian);
+  const ifd0offset = ifdIter.next().value!;
+  const rawTags = [...eachEntryInIFD(ifd, ifd0offset, littleEndian)]
+    .map(x => ({ ...x, tagHex: x.tag.toString(16), tagName: TiffTags[x.tag] }));
+
+  const ifd1offset = ifdIter.next().value!; // thumbnail IFD
+  const thumbnail = readThumbnail(ifd, ifd1offset, littleEndian);
   return { rawTags, thumbnail };
 }
 
@@ -68,17 +71,12 @@ function* eachJfifSegments(dataview: DataView) {
   }
 }
 
-function* eachIFD(dataview: DataView, littleEndian: boolean) {
-  let offset = 0;
+function* eachIFDoffset(dataview: DataView, offset: number, littleEndian: boolean) {
   while (offset < dataview.byteLength) {
+    yield offset;
     const entries = dataview.getUint16(offset, littleEndian);
     const offsetToNext = dataview.getUint32(offset + 2 + 12 * entries, littleEndian)
-    if(offsetToNext === 0){
-      yield partialDataView(dataview, offset);
-      break;
-    }
-    yield partialDataView(dataview, offset, offsetToNext);
-    offset += offsetToNext - 8;
+    offset = offsetToNext;
   }
 }
 const formatByteLength: Record<number, number> = {
@@ -95,21 +93,21 @@ const formatByteLength: Record<number, number> = {
   11: 4, // single float
   12: 8, // double float
 }
-function* eachEntryInIFD(ifd: DataView, littleEndian: boolean) {
-  const entries = ifd.getUint16(0, littleEndian);
+function* eachEntryInIFD(ifd: DataView, offset: number, littleEndian: boolean) {
+  const entries = ifd.getUint16(offset, littleEndian);
   for (let i = 0; i < entries; i++) {
-    const entryOffset = 2 + i * 12;
+    const entryOffset = offset + 2 + i * 12;
     const entryView = partialDataView(ifd, entryOffset, 12);
     const tag = entryView.getUint16(0, littleEndian);
     const format = entryView.getUint16(2, littleEndian);
     const numValues = entryView.getUint32(4, littleEndian);
-    let dataView = partialDataView(entryView, 8, 8)
+    let dataView = partialDataView(entryView, 8, 4)
     if (numValues * formatByteLength[format] > 4) {
       const dataOffset = dataView.getUint32(0, littleEndian);
       dataView = partialDataView(ifd, dataOffset, numValues * formatByteLength[format]);
     }
     if (format === 2) { // ascii string
-      const data = getPartialString(dataView, { offset: 0, length: numValues });
+      const data = getPartialString(dataView, { offset: 0, length: numValues - 1});
       yield { tag, format: 2 as const, numValues, data }
     }
     const data: (number | Rational)[] = [];
@@ -142,8 +140,8 @@ function* eachEntryInIFD(ifd: DataView, littleEndian: boolean) {
   }
 }
 
-function readThumbnail(ifd1: DataView, littleEndian: boolean) {
-  const rawTags = [...eachEntryInIFD(ifd1, littleEndian)];
+function readThumbnail(ifd1: DataView, offset: number, littleEndian: boolean) {
+  const rawTags = [...eachEntryInIFD(ifd1, offset, littleEndian)];
   const compressionTag = rawTags.find(e => e.tag === 0x0103);
   if (!compressionTag) throw new Error("No compression tag found in thumbnail IFD");
   const compression = (compressionTag.data as number[])[0];
