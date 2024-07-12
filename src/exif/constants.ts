@@ -1,4 +1,5 @@
-export type NumDict = Record<number, string>;
+import { NumDict } from "../types.ts";
+
 export const ExifTags: NumDict = {
   // version tags
   0x9000: "ExifVersion",             // EXIF version
@@ -236,6 +237,18 @@ export const StringValues: Record<string, NumDict> = {
     0x0059: "Flash fired, auto mode, red-eye reduction mode",
     0x005D: "Flash fired, auto mode, return light not detected, red-eye reduction mode",
     0x005F: "Flash fired, auto mode, return light detected, red-eye reduction mode"
+  },
+  FlashReturn: {
+    0b00: "No strobe return detection function",
+    0b01: "Flash fired",
+    0b10: "Strobe return light not detected",
+    0b11: "Strobe return light detected"
+  },
+  FlashMode: {
+    0b00: "Unknown",
+    0b01: "Compulsory flash firing",
+    0b10: "Compulsory flash suppression",
+    0b11: "Auto mode"
   },
   SensingMethod: {
     1: "Not defined",

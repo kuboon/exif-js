@@ -1,4 +1,4 @@
-import type { NumDict } from "./constants.ts";
+import type { NumDict } from "./types.ts";
 import { getJpegDataView, getPartialString, scanPartialDataView } from "./dataview.ts";
 
 export const IptcFieldMap: NumDict = {

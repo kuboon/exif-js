@@ -1,6 +1,7 @@
-import { assertEquals } from "@std/assert";
-import { getEXIFinJPEG } from "./src/exif.ts";
-import { getEXIFrawTagsInJPEG } from "./src/raw_exif.ts";
+import { assert, assertEquals } from "@std/assert";
+import { getEXIFinJPEG0 } from "./src/exif/legacy.ts";
+import { getEXIFrawTagsInJPEG } from "./src/exif/raw.ts";
+import { getEXIFinJPEG, type NumberWithRational } from "./src/exif/prettify.ts";
 import { getIPTCinJPEG } from "./src/iptc.ts";
 import { getXMPinJPEG } from "./src/xmp.ts";
 
@@ -9,7 +10,6 @@ const bin = await Deno.readFile(testjpg);
 
 Deno.test({
   name: "getEXIFrawTagsInJPEG",
-  // only: true,
   fn: () => {
     const ret = getEXIFrawTagsInJPEG(bin.buffer)!;
     // assertEquals(Object.keys(ret).length, 45)
@@ -17,11 +17,24 @@ Deno.test({
     console.log(ret);
   }
 })
-Deno.test("findEXIFinJPEG", () => {
-  const ret = getEXIFinJPEG(bin.buffer)!;
-  assertEquals(Object.keys(ret).length, 45)
-  assertEquals(ret["ExifVersion"], "0230");
-  console.log(ret);
+Deno.test({
+  name: "getEXIFinJPEG",
+  only: true,
+  fn: () => {
+    const ret0 = getEXIFinJPEG0(bin.buffer)!;
+    assertEquals(Object.keys(ret0).length, 45)
+    assertEquals(ret0["ExifVersion"], "0230");
+    console.log(ret0);
+    const ret = getEXIFinJPEG(bin.buffer)!;
+    assert(ret)
+    assert(ret.tiffTags)
+    assert(Object.keys(ret.exifTags).length > 0);
+    assert(Object.keys(ret.gpsTags).length > 0);
+    assert(Object.keys(ret.thumbnailTags).length > 0);
+    assert(ret.thumbnailBlob)
+    assertEquals((ret.tiffTags["XResolution"] as NumberWithRational).number, 300);
+    console.log(ret);
+  }
 });
 Deno.test("findIPTCinJPEG", () => {
   const ret = getIPTCinJPEG(bin.buffer)!;
