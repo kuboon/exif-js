@@ -1,13 +1,21 @@
-import { type Rational, findEXIFinJPEG, findIPTCinJPEG, findXMPinJPEG } from "./core";
+import {
+  findEXIFinJPEG,
+  findIPTCinJPEG,
+  findXMPinJPEG,
+  type Rational,
+} from "./core";
 
 export let isXmpEnabled = false;
 export let debug = false;
 
 export const getData = function (img, callback) {
-  if (((self.Image && img instanceof self.Image)
-    || (self.HTMLImageElement && img instanceof self.HTMLImageElement))
-    && !img.complete)
+  if (
+    ((self.Image && img instanceof self.Image) ||
+      (self.HTMLImageElement && img instanceof self.HTMLImageElement)) &&
+    !img.complete
+  ) {
     return false;
+  }
 
   if (!imageHasData(img)) {
     getImageData(img, callback);
@@ -17,22 +25,21 @@ export const getData = function (img, callback) {
     }
   }
   return true;
-}
+};
 
 export const getTag = function (img, tag) {
   if (!imageHasData(img)) return;
   return img.exifdata[tag];
-}
+};
 
 export const getIptcTag = function (img, tag) {
   if (!imageHasData(img)) return;
   return img.iptcdata[tag];
-}
+};
 
 export const getAllTags = function (img) {
   if (!imageHasData(img)) return {};
-  const
-    data = img.exifdata,
+  const data = img.exifdata,
     tags = {};
   for (const a in data) {
     if (data.hasOwnProperty(a)) {
@@ -40,12 +47,11 @@ export const getAllTags = function (img) {
     }
   }
   return tags;
-}
+};
 
 export const getAllIptcTags = function (img) {
   if (!imageHasData(img)) return {};
-  const
-    data = img.iptcdata,
+  const data = img.iptcdata,
     tags = {};
   for (const a in data) {
     if (data.hasOwnProperty(a)) {
@@ -53,19 +59,21 @@ export const getAllIptcTags = function (img) {
     }
   }
   return tags;
-}
+};
 
 export const pretty = function (img) {
   if (!imageHasData(img)) return "";
-  const
-    data = img.exifdata,
+  const data = img.exifdata,
     strPretty: string[] = [];
   for (const a in data) {
     if (data.hasOwnProperty(a)) {
       if (typeof data[a] == "object") {
         if (isRational(data[a])) {
           const num = data[a].numerator / data[a].denominator;
-          strPretty.push(a + " : " + num + " [" + data[a].numerator + "/" + data[a].denominator + "]\r\n");
+          strPretty.push(
+            a + " : " + num + " [" + data[a].numerator + "/" +
+              data[a].denominator + "]\r\n",
+          );
         } else {
           strPretty.push(a + " : [" + data[a].length + " values]\r\n");
         }
@@ -75,18 +83,20 @@ export const pretty = function (img) {
     }
   }
   return strPretty.join("");
-}
+};
 
 function isRational(value: any): value is Rational {
-  return typeof value.numerator === 'bigint' && typeof value.denominator === 'bigint';
+  return typeof value.numerator === "bigint" &&
+    typeof value.denominator === "bigint";
 }
 
 function imageHasData(img) {
   return !!(img.exifdata);
 }
 function base64ToArrayBuffer(base64, contentType = null) {
-  contentType = contentType || base64.match(/^data\:([^\;]+)\;base64,/mi)[1] || ''; // e.g. 'data:image/jpeg;base64,...' => 'image/jpeg'
-  base64 = base64.replace(/^data\:([^\;]+)\;base64,/gmi, '');
+  contentType = contentType || base64.match(/^data\:([^\;]+)\;base64,/mi)[1] ||
+    ""; // e.g. 'data:image/jpeg;base64,...' => 'image/jpeg'
+  base64 = base64.replace(/^data\:([^\;]+)\;base64,/gmi, "");
   const binary = atob(base64);
   const len = binary.length;
   const buffer = new ArrayBuffer(len);
@@ -128,7 +138,6 @@ function getImageData(img, callback) {
     if (/^data\:/i.test(img.src)) { // Data URI
       const arrayBuffer = base64ToArrayBuffer(img.src);
       handleBinaryFile(arrayBuffer);
-
     } else if (/^blob\:/i.test(img.src)) { // Object URL
       const fileReader = new FileReader();
       fileReader.onload = function (e) {
@@ -150,14 +159,16 @@ function getImageData(img, callback) {
       http.responseType = "arraybuffer";
       http.send(null);
     }
-  } else if (self.FileReader && (img instanceof self.Blob || img instanceof self.File)) {
+  } else if (
+    self.FileReader && (img instanceof self.Blob || img instanceof self.File)
+  ) {
     const fileReader = new FileReader();
     fileReader.onload = function (e) {
       if (debug) {
         const result = e.target!.result;
-        if(typeof(result) === 'string') {
+        if (typeof result === "string") {
           console.log("Got file of length " + result.length);
-        } else if(result instanceof ArrayBuffer) {
+        } else if (result instanceof ArrayBuffer) {
           console.log("Got file of length " + result.byteLength);
         } else {
           console.log("Got file of unknown type");
