@@ -16,15 +16,15 @@ export interface JpegDataView extends BrandedDataView {
   type: typeof Types.JpegDataView;
 }
 
-export function getJpegDataView(buf: ArrayBufferLike): JpegDataView | false {
+export function getJpegDataView(buf: ArrayBufferLike): JpegDataView | null {
   if (debug) console.log("Got file of length " + buf.byteLength);
 
   const dataView = new DataView(buf);
   if (dataView.getUint16(0) != 0xFFD8) {
-    if (debug) console.log("Not a valid JPEG");
-    return false;
+    if (debug) console.log("JFIF SOI marker 0xFFD8 not found");
+    return null;
   }
-  return { type: "JpegDataView", v: dataView }
+  return { type: Types.JpegDataView, v: dataView }
 }
 
 

@@ -15,7 +15,7 @@ export type RawTagEntry = { tag: number, format: number, numValues: number, data
 
 export function getEXIFrawTagsInJPEG(buf: ArrayBufferLike) {
   const jpeg = getJpegDataView(buf);
-  if (!jpeg) return false
+  if (!jpeg) return null
 
   for (const { marker, segment } of eachJfifSegments(jpeg.v)) {
     // we could implement handling for other markers here,
@@ -51,14 +51,14 @@ function readRawTags(ifd: DataView) {
 
   const ifdIter = eachIFDoffset(ifd, firstIFDOffset, littleEndian);
   const ifd0offset = ifdIter.next().value!; // main image IFD
-  const tiffTags: RawTagEntry[] = [...eachEntryInIFD(ifd, ifd0offset, littleEndian)]
+  const tiff: RawTagEntry[] = [...eachEntryInIFD(ifd, ifd0offset, littleEndian)]
 
-  const exifTags: RawTagEntry[] = getTagsByTagPointer(tiffTags, ifd, 0x8769, littleEndian); // ExifIFDPointer
-  const gpsTags: RawTagEntry[] = getTagsByTagPointer(tiffTags, ifd, 0x8825, littleEndian); // GPSInfoIFDPointer
+  const exif: RawTagEntry[] = getTagsByTagPointer(tiff, ifd, 0x8769, littleEndian); // ExifIFDPointer
+  const gps: RawTagEntry[] = getTagsByTagPointer(tiff, ifd, 0x8825, littleEndian); // GPSInfoIFDPointer
 
   const ifd1offset = ifdIter.next().value!; // thumbnail IFD
-  const { rawTags: thumbnailTags, blob: thumbnailBlob } = readThumbnail(ifd, ifd1offset, littleEndian);
-  return { tiffTags, exifTags, gpsTags, thumbnailTags, thumbnailBlob };
+  const { rawTags: thumbnail, blob: thumbnailBlob } = readThumbnail(ifd, ifd1offset, littleEndian);
+  return { tags: { tiff, exif, gps, thumbnail }, thumbnailBlob };
 }
 
 function getTagsByTagPointer(tiffTags: { tag: number, data: unknown }[], ifd: DataView, tag: number, littleEndian: boolean) {
@@ -126,7 +126,7 @@ function sizeAndFnForFormat(format: number, littleEndian: boolean) {
     }
     case 2: { // ASCII
       const size = 1
-      const getData = (dataView: DataView, numValues: number) => getPartialString(dataView, { length: numValues - 1 })!
+      const getData = (dataView: DataView, numValues: number) => getPartialString(dataView, { length: numValues - 1 })! // strip last null
       return { size, getData }
     }
     case 3: case 8: { // SHORT, signed short (obsolete)
@@ -161,7 +161,7 @@ function sizeAndFnForFormat(format: number, littleEndian: boolean) {
     }
     case 129: { // UTF-8
       const size = 1
-      const getData = (dataView: DataView, numValues: number) => getPartialString(dataView, { length: numValues - 1 })!
+      const getData = (dataView: DataView, numValues: number) => getPartialString(dataView, { length: numValues - 1 })! // strip last null
       return { size, getData }
     }
   }

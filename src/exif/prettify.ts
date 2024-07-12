@@ -1,5 +1,5 @@
 import { ExifTags, GPSTags, TiffTags, IFD1Tags, StringValues } from "./constants.ts";
-import { type NumDict } from "../types.ts";
+import type { NumDict } from "../types.ts";
 import { type Rational, type RawData, type RawTagEntry, getEXIFrawTagsInJPEG } from "./raw.ts";
 
 export type NumberWithRational = Rational & { number: number };
@@ -38,7 +38,7 @@ export function extractFlashBits(exifTags: { tagName: string, data: RawData }[])
   ]
   exifTags.splice(flashTagIndex, 1, ...flashRows);
 }
-export function stringifySomeData(rows: { tagName: string, data: RawData }[], dict: NumDict) {
+export function stringifySomeData(rows: { tagName: string, data: RawData }[]) {
   return rows.map((row) => {
     const { tagName, data } = row;
     if (tagName === 'ExifVersion' || tagName === 'FlashpixVersion') {
@@ -84,7 +84,7 @@ export function buildTagDataKv(rawTags: PrettifyedTagEntry[]) {
 export function prettifyAllData(rows_: RawTagEntry[], dict: NumDict): PrettifyedTagEntry[] {
   const nameTaggedRows = stringifyTags(rows_, dict);
   extractFlashBits(nameTaggedRows);
-  const stringifiedRows = stringifySomeData(nameTaggedRows, dict);
+  const stringifiedRows = stringifySomeData(nameTaggedRows);
   return stringifiedRows.map((row) => {
     const { tagName, data } = row;
 
@@ -94,20 +94,16 @@ export function prettifyAllData(rows_: RawTagEntry[], dict: NumDict): Prettifyed
 }
 export function getEXIFinJPEG(buf: ArrayBufferLike) {
   const rawTags = getEXIFrawTagsInJPEG(buf);
-  if (!rawTags) return false;
-  const { tiffTags, exifTags, gpsTags, thumbnailTags, thumbnailBlob } = rawTags;
+  if (!rawTags) return null;
+  const { tags: { tiff, exif, gps, thumbnail }, thumbnailBlob } = rawTags;
 
-  const tiffTagsKv = buildTagDataKv(prettifyAllData(tiffTags, TiffTags))
-  const exifTagsKv = buildTagDataKv(prettifyAllData(exifTags, ExifTags));
-  const gpsTagsKv = buildTagDataKv(prettifyAllData(gpsTags, GPSTags));
-  const thumbnailTagsKv = buildTagDataKv(prettifyAllData(thumbnailTags, IFD1Tags));
-  return {
-    tiffTags: tiffTagsKv,
-    exifTags: exifTagsKv,
-    gpsTags: gpsTagsKv,
-    thumbnailTags: thumbnailTagsKv,
-    thumbnailBlob
+  const tags = {
+    tiff: buildTagDataKv(prettifyAllData(tiff, TiffTags)),
+    exif: buildTagDataKv(prettifyAllData(exif, ExifTags)),
+    gps: buildTagDataKv(prettifyAllData(gps, GPSTags)),
+    thumbnail: buildTagDataKv(prettifyAllData(thumbnail, IFD1Tags))
   }
+  return { tags, thumbnailBlob }
 }
 
 function isRational(data: unknown): data is Rational {
