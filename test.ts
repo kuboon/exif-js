@@ -1,38 +1,83 @@
 import { assert, assertEquals, assertStrictEquals } from "@std/assert";
-import { getEXIFrawTagsInJPEG } from "./src/exif/raw.ts";
-import { getEXIFinJPEG, type NumberWithRational } from "./src/exif/prettify.ts";
+import { getEXIFrawTagsInJPEG, type Rational } from "./src/exif/raw.ts";
+import {
+  getEXIFenrichedTagsInJPEG,
+  getEXIFflatKVInJPEG,
+  getEXIFminimalTagsInJPEG,
+} from "./src/exif/mod.ts";
 import { getIPTCinJPEG } from "./src/iptc.ts";
 import { getXMPinJPEG } from "./src/xmp.ts";
 
-const testjpg = new URL("./spec/test.jpg", import.meta.url);
+// const testjpg = new URL("./spec/test.jpg", import.meta.url);
+const testjpg = new URL("./spec/cambodia-wheelchair.jpg", import.meta.url);
 const bin = await Deno.readFile(testjpg);
 
 Deno.test({
   name: "getEXIFrawTagsInJPEG",
   fn: () => {
     const ret = getEXIFrawTagsInJPEG(bin.buffer)!;
-    // assertEquals(Object.keys(ret).length, 45)
-    // assertEquals(ret["ExifVersion"], "0230");
+    assert(ret);
+
+    const { tags, thumbnailBlob } = ret;
+    assertEquals(tags.length, 4);
+    const iptcRows = tags.find((x) => x.type === "iptc")!.rows;
+    assertEquals(iptcRows.length, 10);
+    const XResolutionRow = iptcRows.find((x) => x.tag === 282)!;
+    assertEquals((XResolutionRow.rawData[0] as Rational).numerator, 300);
+
+    const exifRows = tags.find((x) => x.type === "exif")!.rows;
+    assertEquals(exifRows.length, 25);
+    const gpsRows = tags.find((x) => x.type === "gps")!.rows;
+    assertEquals(gpsRows.length, 7);
+    const thumbnailRows = tags.find((x) => x.type === "thumbnail")!.rows;
+    assertEquals(thumbnailRows.length, 6);
+
+    assert(thumbnailBlob);
+    // console.log(ret);
+  },
+});
+Deno.test({
+  name: "getEXIFenrichedTagsInJPEG",
+  fn: () => {
+    const ret = getEXIFenrichedTagsInJPEG(bin.buffer);
+    assert(ret);
+
+    const { tags, thumbnailBlob } = ret;
+    assertEquals(tags.length, 4);
+    const iptcRows = tags.find((x) => x.type === "iptc")!.rows;
+    assertEquals(iptcRows.length, 10);
+    const XResolutionRow = iptcRows.find((x) => x.tag === 282)!;
+    assertEquals(XResolutionRow.data, 300);
+
+    const exifRows = tags.find((x) => x.type === "exif")!.rows;
+    assertEquals(exifRows.length, 25);
+    const gpsRows = tags.find((x) => x.type === "gps")!.rows;
+    assertEquals(gpsRows.length, 7);
+    const thumbnailRows = tags.find((x) => x.type === "thumbnail")!.rows;
+    assertEquals(thumbnailRows.length, 6);
+
+    assert(thumbnailBlob);
+    // console.log(ret);
+  },
+});
+Deno.test({
+  name: "getEXIFminimalTagsInJPEG",
+  fn: () => {
+    const ret = getEXIFminimalTagsInJPEG(bin.buffer);
+    assert(ret);
     console.log(ret);
   },
 });
 Deno.test({
-  name: "getEXIFinJPEG",
+  name: "getEXIFflatKVInJPEG",
+  only: true,
   fn: () => {
-    const ret = getEXIFinJPEG(bin.buffer);
+    const ret = getEXIFflatKVInJPEG(bin.buffer);
     assert(ret);
-
-    const { tags } = ret;
-
-    assert(tags.tiff);
-    assert(Object.keys(tags.exif).length > 0);
-    assert(Object.keys(tags.gps).length > 0);
-    assert(Object.keys(tags.thumbnail).length > 0);
-    assert(ret.thumbnailBlob);
-    assertEquals((tags.tiff["XResolution"] as NumberWithRational).number, 300);
     console.log(ret);
   },
 });
+
 Deno.test("getIPTCinJPEG", () => {
   const ret = getIPTCinJPEG(bin.buffer);
   assert(ret);
@@ -41,7 +86,9 @@ Deno.test("getIPTCinJPEG", () => {
     ret["copyright"],
     "© Copyright 2017 Carl Seibert  metadatamatters.blog (IIM)",
   );
+  // console.log(ret);
 });
+
 Deno.test("getXMPinJPEG", () => {
   const ret = getXMPinJPEG(bin.buffer);
   assert(ret);

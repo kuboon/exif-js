@@ -1,6 +1,6 @@
-import { NumDict } from "../types.ts";
+import type { NumDict } from "../types.ts";
 
-export const ExifTags: NumDict = {
+const ExifTags: NumDict = {
   // version tags
   0x9000: "ExifVersion", // EXIF version
   0xA000: "FlashpixVersion", // Flashpix format version
@@ -24,6 +24,9 @@ export const ExifTags: NumDict = {
   // date and time
   0x9003: "DateTimeOriginal", // Date and time when the original image was generated
   0x9004: "DateTimeDigitized", // Date and time when the image was stored digitally
+  0x9010: "OffsetTime",
+  0x9011: "OffsetTimeOriginal",
+  0x9012: "OffsetTimeDigitized",
   0x9290: "SubsecTime", // Fractions of seconds for DateTime
   0x9291: "SubsecTimeOriginal", // Fractions of seconds for DateTimeOriginal
   0x9292: "SubsecTimeDigitized", // Fractions of seconds for DateTimeDigitized
@@ -75,7 +78,7 @@ export const ExifTags: NumDict = {
   0xA420: "ImageUniqueID", // Identifier assigned uniquely to each image
 };
 
-export const TiffTags: NumDict = {
+const TiffTags: NumDict = {
   0x0100: "ImageWidth",
   0x0101: "ImageHeight",
   0x8769: "ExifIFDPointer",
@@ -111,7 +114,7 @@ export const TiffTags: NumDict = {
   0x8298: "Copyright",
 };
 
-export const GPSTags: NumDict = {
+const GPSTags: NumDict = {
   0x0000: "GPSVersionID",
   0x0001: "GPSLatitudeRef",
   0x0002: "GPSLatitude",
@@ -143,10 +146,11 @@ export const GPSTags: NumDict = {
   0x001C: "GPSAreaInformation",
   0x001D: "GPSDateStamp",
   0x001E: "GPSDifferential",
+  0x001F: "GPSHPositioningError",
 };
 
-// EXIF 2.3 Spec
-export const IFD1Tags: NumDict = {
+// EXIF 2.3 Spec thumbnail tags
+const IFD1Tags: NumDict = {
   0x0100: "ImageWidth",
   0x0101: "ImageHeight",
   0x0102: "BitsPerSample",
@@ -169,7 +173,14 @@ export const IFD1Tags: NumDict = {
   0x0214: "ReferenceBlackWhite",
 };
 
-export const StringValues: Record<string, NumDict> = {
+export const TagsDict: Record<string, NumDict> = {
+  iptc: TiffTags,
+  exif: ExifTags,
+  gps: GPSTags,
+  thumbnail: IFD1Tags,
+};
+
+export const ValuesDict: Record<string, NumDict> = {
   ExposureProgram: {
     0: "Not defined",
     1: "Manual",
@@ -213,34 +224,6 @@ export const StringValues: Record<string, NumDict> = {
     23: "D50",
     24: "ISO studio tungsten",
     255: "Other",
-  },
-  Flash: {
-    0x0000: "Flash did not fire",
-    0x0001: "Flash fired",
-    0x0005: "Strobe return light not detected",
-    0x0007: "Strobe return light detected",
-    0x0009: "Flash fired, compulsory flash mode",
-    0x000D: "Flash fired, compulsory flash mode, return light not detected",
-    0x000F: "Flash fired, compulsory flash mode, return light detected",
-    0x0010: "Flash did not fire, compulsory flash mode",
-    0x0018: "Flash did not fire, auto mode",
-    0x0019: "Flash fired, auto mode",
-    0x001D: "Flash fired, auto mode, return light not detected",
-    0x001F: "Flash fired, auto mode, return light detected",
-    0x0020: "No flash function",
-    0x0041: "Flash fired, red-eye reduction mode",
-    0x0045: "Flash fired, red-eye reduction mode, return light not detected",
-    0x0047: "Flash fired, red-eye reduction mode, return light detected",
-    0x0049: "Flash fired, compulsory flash mode, red-eye reduction mode",
-    0x004D:
-      "Flash fired, compulsory flash mode, red-eye reduction mode, return light not detected",
-    0x004F:
-      "Flash fired, compulsory flash mode, red-eye reduction mode, return light detected",
-    0x0059: "Flash fired, auto mode, red-eye reduction mode",
-    0x005D:
-      "Flash fired, auto mode, return light not detected, red-eye reduction mode",
-    0x005F:
-      "Flash fired, auto mode, return light detected, red-eye reduction mode",
   },
   FlashReturn: {
     0b00: "No strobe return detection function",

@@ -2,6 +2,7 @@ import type { NumDict } from "./types.ts";
 import {
   getJpegDataView,
   getPartialString,
+  partialDataView,
   scanPartialDataView,
 } from "./dataview.ts";
 
@@ -18,8 +19,8 @@ export const IptcFieldMap: NumDict = {
   0x0F: "category",
 };
 
-export function getIPTCinJPEG(file: ArrayBufferLike) {
-  const jpeg = getJpegDataView(file);
+export function getIPTCinJPEG(buf: ArrayBufferLike) {
+  const jpeg = getJpegDataView(buf);
   if (!jpeg) return null;
 
   const iptc = scanPartialDataView(
@@ -38,9 +39,7 @@ export function getIPTCinJPEG(file: ArrayBufferLike) {
   const startOffset = 8 + nameHeaderLength + 8;
   const sectionLength = iptc.getUint16(nameHeaderLength + 6);
 
-  return readIPTCData(
-    new DataView(iptc.buffer, iptc.byteOffset + startOffset, sectionLength),
-  );
+  return readIPTCData(partialDataView(iptc, startOffset, sectionLength));
 }
 
 function readIPTCData(dataView: DataView) {

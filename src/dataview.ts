@@ -1,6 +1,6 @@
 let debug = false;
-export function enableDebug() {
-  debug = true;
+export function setDebug(val = true) {
+  debug = val;
 }
 
 interface BrandedDataView {
