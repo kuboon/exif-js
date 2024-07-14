@@ -72,10 +72,14 @@ const ExifTags: NumDict = {
   0xA40A: "Sharpness", // Direction of sharpness processing applied by camera
   0xA40B: "DeviceSettingDescription", //
   0xA40C: "SubjectDistanceRange", // Distance to subject
+  0xA460: "CompositeImage",
 
   // other tags
   0xA005: "InteroperabilityIFDPointer",
   0xA420: "ImageUniqueID", // Identifier assigned uniquely to each image
+  0xA432: "LensSpecification",
+  0xA433: "LensMake",
+  0xA434: "LensModel",
 };
 
 const TiffTags: NumDict = {
@@ -101,6 +105,7 @@ const TiffTags: NumDict = {
   0x0201: "JPEGInterchangeFormat",
   0x0202: "JPEGInterchangeFormatLength",
   0x012D: "TransferFunction",
+  0x013C: "HostComputer",
   0x013E: "WhitePoint",
   0x013F: "PrimaryChromaticities",
   0x0211: "YCbCrCoefficients",
@@ -225,18 +230,6 @@ export const ValuesDict: Record<string, NumDict> = {
     24: "ISO studio tungsten",
     255: "Other",
   },
-  FlashReturn: {
-    0b00: "No strobe return detection function",
-    0b01: "Flash fired",
-    0b10: "Strobe return light not detected",
-    0b11: "Strobe return light detected",
-  },
-  FlashMode: {
-    0b00: "Unknown",
-    0b01: "Compulsory flash firing",
-    0b10: "Compulsory flash suppression",
-    0b11: "Auto mode",
-  },
   SensingMethod: {
     1: "Not defined",
     2: "One-chip color area sensor",
@@ -291,11 +284,16 @@ export const ValuesDict: Record<string, NumDict> = {
     2: "Close view",
     3: "Distant view",
   },
+  CompositeImage: {
+    0: "unknown",
+    1: "non-composite image",
+    2: "General composite image",
+    3: "Composite image captured when shooting",
+  },
   FileSource: {
     3: "DSC",
   },
-
-  Components: {
+  ComponentsConfiguration: {
     0: "",
     1: "Y",
     2: "Cb",
@@ -303,5 +301,32 @@ export const ValuesDict: Record<string, NumDict> = {
     4: "R",
     5: "G",
     6: "B",
+  },
+};
+
+export const FlashDict: Record<string, NumDict> = {
+  FlashFired: {
+    0b0: "0 Flash did not fire",
+    0b1: "1 Flash fired",
+  },
+  FlashReturn: {
+    0b00: "0 No strobe return detection function",
+    0b01: "1 Flash fired",
+    0b10: "2 Strobe return light not detected",
+    0b11: "3 Strobe return light detected",
+  },
+  FlashMode: {
+    0b00: "0 Unknown",
+    0b01: "1 Compulsory flash firing",
+    0b10: "2 Compulsory flash suppression",
+    0b11: "3 Auto mode",
+  },
+  FlashFunction: {
+    0b0: "0 Flash function present",
+    0b1: "1 No flash function",
+  },
+  FlashRedEyeMode: {
+    0b0: "0 No red-eye reduction",
+    0b1: "1 Red-eye reduction",
   },
 };

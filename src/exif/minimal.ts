@@ -1,5 +1,6 @@
 import type { ReadableData, ReadableTagEntry } from "./readable.ts";
 import type { RawData } from "./raw.ts";
+import { equal } from "@std/assert";
 
 export type MinimalTagEntry = {
   tagName: string;
@@ -16,11 +17,11 @@ export function buildTagDataKv(rawTags: MinimalTagEntry[]) {
   const kv: Record<string, { data: ReadableData; rawData: RawData }> = {};
   rawTags.forEach((row) => {
     const { tagName, data, rawData } = row;
-    if (Object.hasOwn(kv, tagName!)) {
-      throw new Error("Duplicate tag name");
-    } else {
-      kv[tagName] = { data, rawData };
+    const existing = kv[tagName];
+    if (!equal(existing.rawData, rawData)) {
+      throw new Error(`Duplicate tag name has defferent rawData: ${tagName}`);
     }
+    kv[tagName] = { data, rawData };
   });
   return kv;
 }

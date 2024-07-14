@@ -29,14 +29,15 @@ export function getEXIFrawTagsInJPEG(buf: ArrayBufferLike) {
   if (!jpeg) return null;
 
   for (const { marker, segment } of eachJfifSegments(jpeg.v)) {
-    // if (marker == 0xFFE0) {
-    //   if (debug) console.log(`Found 0x${marker.toString(16)} marker`);
-    //   const keyword = getPartialString(segment, { offset: 0, length: 4 });
-    //   if (keyword !== "JFIF") {
-    //     throw new Error("'JFIF' marker not found. was " + keyword);
-    //   }
-    //   do something?
-    // }
+    if (marker == 0xFFE0) {
+      if (debug) console.log(`Found 0x${marker.toString(16)} marker`);
+      const keyword = getPartialString(segment, { offset: 0, length: 4 });
+      if (keyword !== "JFIF") {
+        throw new Error("'JFIF' marker not found. was " + keyword);
+      }
+      // do something?
+      continue;
+    }
 
     // we could implement handling for other markers here,
     // but we're only looking for 0xFFE1 for EXIF data
@@ -318,18 +319,24 @@ function readThumbnail(ifd1: DataView, offset: number, littleEndian: boolean) {
     });
   }
   if (compression == 6) { // JPEG
-    const offsetTag = rawTags.find((e) => e.tag === 0x0201); // JpegIFOffset
-    const byteCountTag = rawTags.find((e) => e.tag === 0x0202); // JpegIFByteCount
-    if (!offsetTag || !byteCountTag) {
+    const offset = getTagAndRemove(rawTags, 0x0201); // JpegIFOffset
+    const byteCount = getTagAndRemove(rawTags, 0x0202); // JpegIFByteCount
+    if (offset === null || byteCount === null) {
       throw new Error(
         "No offset or byte count tag found in JPEG thumbnail IFD",
       );
     }
-    const offset = (offsetTag.rawData as number[])[0];
-    const byteCount = (byteCountTag.rawData as number[])[0];
     blob = new Blob([new Uint8Array(ifd1.buffer, offset, byteCount)], {
       type: "image/jpeg",
     });
   }
   return { rawTags, blob };
+}
+
+function getTagAndRemove(tags: RawTagEntry[], tag: number) {
+  const idx = tags.findIndex((e) => e.tag === tag);
+  if (idx === -1) return null;
+  const ret = tags[idx].rawData[0];
+  tags.splice(idx, 1);
+  return ret as number;
 }
