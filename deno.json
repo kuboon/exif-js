@@ -1,6 +1,6 @@
 {
   "name": "@kuboon/exif",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "tasks": {
     "test": "deno test --config=tests/deno.json --allow-read=spec/",
     "serve": "deno run --allow-net --allow-read=. --allow-sys jsr:@std/http/file-server"
