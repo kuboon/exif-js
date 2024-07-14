@@ -1,3 +1,8 @@
+/**
+ * Convert frontend materials to ArrayBuffer
+ * @param something
+ * @returns
+ */
 export async function getArrayBufferFrom(
   something: HTMLImageElement | HTMLInputElement | URL | string | Blob,
 ): Promise<ArrayBuffer> {
@@ -9,16 +14,14 @@ export async function getArrayBufferFrom(
   } else if (something instanceof URL) {
     blob = await fetch(something.href).then((x) => x.blob());
   } else if (typeof something === "string") {
-    const url = URL.parse(something);
-    if (url) {
-      blob = await fetch(url.href).then((x) => x.blob());
-    }
+    new URL(something); // validate URL
+    blob = await fetch(something).then((x) => x.blob());
   } else if (something instanceof Blob) {
     blob = something;
   }
   if (!blob) {
     throw new Error(
-      "Invalid argument. Expected HTMLImageElement | HTMLInputElement(type=file) | URL | string | Blob",
+      "Invalid argument. Expected HTMLImageElement | HTMLInputElement(type=file) | URL | string(url) | Blob",
     );
   }
   return blob.arrayBuffer();

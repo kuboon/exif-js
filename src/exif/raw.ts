@@ -24,6 +24,20 @@ export type RawTagEntry = {
 };
 export type RawTagsGroup = TagsGroup<RawTagEntry>;
 
+/**
+ * Extract EXIF raw tags from JPEG ArrayBuffer
+ *
+ * Simple typed, no tag name, no data conversion.
+ * Also get thumbnail blob if exists.
+ *
+ * There are 4 tag groups: 'iptc', 'exif', 'gps', 'thumbnail'
+ * which based on EXIF specification.
+ *
+ * Few tags like 'JpegIFOffset' which only for binary are removed.
+ *
+ * @param buf
+ * @returns
+ */
 export function getEXIFrawTagsInJPEG(
   buf: ArrayBufferLike,
 ): { tags: RawTagsGroup[]; thumbnailBlob: Blob | null } | null {

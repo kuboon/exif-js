@@ -20,7 +20,7 @@
     "@std/http": "jsr:@std/http@^0.224.5"
   },
   "compilerOptions": {
-    "target": "es2022",
+    "target": "esnext",
     "lib": ["dom", "dom.iterable", "es2022"]
   }
 }
