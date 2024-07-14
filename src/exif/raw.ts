@@ -24,7 +24,9 @@ export type RawTagEntry = {
 };
 export type RawTagsGroup = TagsGroup<RawTagEntry>;
 
-export function getEXIFrawTagsInJPEG(buf: ArrayBufferLike) {
+export function getEXIFrawTagsInJPEG(
+  buf: ArrayBufferLike,
+): { tags: RawTagsGroup[]; thumbnailBlob: Blob | null } | null {
   const jpeg = getJpegDataView(buf);
   if (!jpeg) return null;
 
@@ -99,6 +101,7 @@ function readExifSegment(ifd: DataView) {
         { type: "exif", rows: exif },
         { type: "gps", rows: gps },
       ] as RawTagsGroup[],
+      thumbnailBlob: null,
     };
   }
   const ifd1offset = ifdIter.next().value!; // thumbnail IFD
@@ -303,7 +306,7 @@ function readThumbnail(ifd1: DataView, offset: number, littleEndian: boolean) {
     throw new Error("No compression tag found in thumbnail IFD");
   }
   const compression = compressionTag.rawData![0] as number;
-  let blob: Blob | undefined;
+  let blob: Blob | null = null;
   if (compression == 1) { // uncompressed TIFF
     const offsetTag = rawTags.find((e) => e.tag === 0x0111); // StripOffset
     const byteCountTag = rawTags.find((e) => e.tag === 0x0117); // StripByteCounts

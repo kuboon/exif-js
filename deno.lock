@@ -50,11 +50,16 @@
     "https://deno.land/std@0.224.0/fmt/colors.ts": "508563c0659dd7198ba4bbf87e97f654af3c34eb56ba790260f252ad8012e1c5",
     "https://deno.land/std@0.224.0/internal/diff.ts": "6234a4b493ebe65dc67a18a0eb97ef683626a1166a1906232ce186ae9f65f4e6",
     "https://deno.land/std@0.224.0/internal/format.ts": "0a98ee226fd3d43450245b1844b47003419d34d210fa989900861c79820d21c2",
-    "https://deno.land/std@0.224.0/internal/mod.ts": "534125398c8e7426183e12dc255bb635d94e06d0f93c60a297723abe69d3b22e"
+    "https://deno.land/std@0.224.0/internal/mod.ts": "534125398c8e7426183e12dc255bb635d94e06d0f93c60a297723abe69d3b22e",
+    "https://esm.sh/terser@5.27.0?bundle&target=esnext": "a11bb68b89c7b87f238e3d8ab30a7c452a84409136b22870ded70ca131d77e6e",
+    "https://esm.sh/typescript@5.3.3?bundle&target=esnext": "6b6617f46cb6ea094df83e27331217627cd482c245e60a33366770f4968810bd",
+    "https://esm.sh/v135/terser@5.27.0/esnext/terser.bundle.mjs": "ed3388591587a320a4fd46868ee4e54a8cc30f408407c71491e510c2ea0bd1e9",
+    "https://esm.sh/v135/typescript@5.3.3/esnext/typescript.bundle.mjs": "f576adfee49104fd7fdec2575abcd66a804dd0030122bb1cdeba364b5864c2a4"
   },
   "workspace": {
     "dependencies": [
-      "jsr:@std/assert@^0.226.0"
+      "jsr:@std/assert@^0.226.0",
+      "jsr:@std/http@^0.226.0"
     ]
   }
 }

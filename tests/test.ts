@@ -1,15 +1,16 @@
 import { assert, assertEquals, assertStrictEquals } from "@std/assert";
-import { getEXIFrawTagsInJPEG, type Rational } from "./src/exif/raw.ts";
+import { getEXIFrawTagsInJPEG, type Rational } from "../src/exif/raw.ts";
 import {
+  buildKeyValue,
   getEXIFenrichedTagsInJPEG,
-  getEXIFflatKVInJPEG,
   getEXIFminimalTagsInJPEG,
-} from "./src/exif/mod.ts";
-import { getIPTCinJPEG } from "./src/iptc.ts";
-import { getXMPinJPEG } from "./src/xmp.ts";
+  getRow,
+} from "../src/exif/mod.ts";
+import { getIPTCinJPEG } from "../src/iptc.ts";
+import { getXMPinJPEG } from "../src/xmp.ts";
 
-// const testjpg = new URL("./spec/test.jpg", import.meta.url);
-const testjpg = new URL("./spec/cambodia-wheelchair.jpg", import.meta.url);
+const testjpg = new URL("../spec/test.jpg", import.meta.url);
+// const testjpg = new URL("./spec/cambodia-wheelchair.jpg", import.meta.url);
 const bin = await Deno.readFile(testjpg);
 
 Deno.test({
@@ -30,7 +31,7 @@ Deno.test({
     const gpsRows = tags.find((x) => x.type === "gps")!.rows;
     assertEquals(gpsRows.length, 7);
     const thumbnailRows = tags.find((x) => x.type === "thumbnail")!.rows;
-    assertEquals(thumbnailRows.length, 6);
+    assertEquals(thumbnailRows.length, 4);
 
     assert(thumbnailBlob);
     // console.log(ret);
@@ -54,7 +55,7 @@ Deno.test({
     const gpsRows = tags.find((x) => x.type === "gps")!.rows;
     assertEquals(gpsRows.length, 7);
     const thumbnailRows = tags.find((x) => x.type === "thumbnail")!.rows;
-    assertEquals(thumbnailRows.length, 6);
+    assertEquals(thumbnailRows.length, 4);
 
     assert(thumbnailBlob);
     // console.log(ret);
@@ -65,16 +66,17 @@ Deno.test({
   fn: () => {
     const ret = getEXIFminimalTagsInJPEG(bin.buffer);
     assert(ret);
-    console.log(ret);
+    console.log(getRow(ret.tags, "iptc", "XResolution"));
+    console.log(getRow(ret.tags, "thumbnail", "XResolution"));
   },
 });
 Deno.test({
-  name: "getEXIFflatKVInJPEG",
-  only: true,
+  name: "buildKeyValue",
   fn: () => {
-    const ret = getEXIFflatKVInJPEG(bin.buffer);
+    const ret = getEXIFminimalTagsInJPEG(bin.buffer);
     assert(ret);
-    console.log(ret);
+    const kv = buildKeyValue(ret.tags);
+    console.log(kv);
   },
 });
 

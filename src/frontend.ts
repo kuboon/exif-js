@@ -1,4 +1,4 @@
-export function getBufFromImgElem(img: HTMLImageElement) {
+export function getBufFromImgElem(img: HTMLImageElement): ArrayBufferLike {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
   if (!ctx) {
@@ -9,7 +9,9 @@ export function getBufFromImgElem(img: HTMLImageElement) {
   ctx.drawImage(img, 0, 0);
   return ctx.getImageData(0, 0, img.width, img.height).data.buffer;
 }
-export function getBufFromFileInput(fileInput: HTMLInputElement) {
+export function getBufFromFileInput(
+  fileInput: HTMLInputElement,
+): Promise<ArrayBuffer> {
   const file = fileInput.files![0];
   return new Promise<ArrayBuffer>((resolve) => {
     const reader = new FileReader();

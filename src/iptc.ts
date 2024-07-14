@@ -19,7 +19,9 @@ export const IptcFieldMap: NumDict = {
   0x0F: "category",
 };
 
-export function getIPTCinJPEG(buf: ArrayBufferLike) {
+export function getIPTCinJPEG(
+  buf: ArrayBufferLike,
+): Record<string, string | string[]> | null {
   const jpeg = getJpegDataView(buf);
   if (!jpeg) return null;
 

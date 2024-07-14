@@ -1,12 +1,13 @@
 {
   "name": "@kuboon/exif",
   "version": "0.1.0",
+  "tasks": {
+    "test": "deno test --config=tests/deno.json --allow-read=spec/",
+    "serve": "deno run --allow-net --allow-read=. --allow-sys jsr:@std/http/file-server"
+  },
   "exports": {
     ".": "./src/mod.ts",
-    "./frontend": "./src/exif/frontend.ts"
-  },
-  "imports": {
-    "@std/assert": "jsr:@std/assert@^0.226.0"
+    "./frontend": "./src/frontend.ts"
   },
   "publish": {
     "include": [
@@ -14,8 +15,12 @@
     ],
     "exclude": []
   },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@^0.226.0",
+    "@std/http": "jsr:@std/http@^0.224.5"
+  },
   "compilerOptions": {
-    "target": "esnext",
-    "lib": ["dom", "dom.iterable", "dom.asynciterable", "deno.ns"]
+    "target": "es2022",
+    "lib": ["dom", "dom.iterable", "es2022"]
   }
 }

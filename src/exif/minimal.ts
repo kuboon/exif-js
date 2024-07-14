@@ -18,7 +18,7 @@ export function buildTagDataKv(rawTags: MinimalTagEntry[]) {
   rawTags.forEach((row) => {
     const { tagName, data, rawData } = row;
     const existing = kv[tagName];
-    if (!equal(existing.rawData, rawData)) {
+    if (existing && !equal(existing.rawData, rawData)) {
       throw new Error(`Duplicate tag name has defferent rawData: ${tagName}`);
     }
     kv[tagName] = { data, rawData };

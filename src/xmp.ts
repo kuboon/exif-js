@@ -4,9 +4,12 @@ import {
   scanPartialDataView,
 } from "./dataview.ts";
 
-export function getXMPinJPEG(buf: ArrayBufferLike, fixXmlNs = false) {
+export function getXMPinJPEG(
+  buf: ArrayBufferLike,
+  fixXmlNs = false,
+): string | null {
   const jpeg = getJpegDataView(buf);
-  if (!jpeg) return false;
+  if (!jpeg) return null;
 
   const xpacketId = new TextEncoder().encode("W5M0MpCehiHzreSzNTczkc9d");
   const xpacketDataView = scanPartialDataView(jpeg.v, xpacketId);

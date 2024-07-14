@@ -1,0 +1,9 @@
+{
+  "imports": {
+    "@std/assert": "jsr:@std/assert@^0.226.0"
+  },
+  "compilerOptions": {
+    "target": "deno",
+    "lib": ["dom", "dom.iterable", "deno.ns"]
+  }
+}
