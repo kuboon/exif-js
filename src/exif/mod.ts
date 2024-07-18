@@ -86,10 +86,10 @@ export function getRow<T extends { tagName: string }>(
 /**
  * Build basic JS object by key = `tagName` and value = { data, rawData }.
  *
- * By default, 'iptc', 'exif', 'gps' TagGroup are all included.
+ * By default, 'tiff', 'exif', 'gps' TagGroup are all included.
  *
  * 'thumbnail' TagGroup is not included by default because some tags
- * like `XResolution` conflicts with `iptc` TagGroup.
+ * like `XResolution` conflicts with `tiff` TagGroup.
  *
  * @example Basic usage
  * ```ts
@@ -114,7 +114,7 @@ export function buildKeyValue<T extends MinimalTagEntry>(
   tags: TagsGroup<T>[],
   ...types: string[]
 ): Record<string, { data: ReadableData; rawData: RawData }> {
-  if (types.length === 0) types = ["iptc", "exif", "gps"];
+  if (types.length === 0) types = ["tiff", "exif", "gps"];
   const rows: T[] = tags.filter((x) => types.includes(x.type)).flatMap((x) =>
     x.rows
   );

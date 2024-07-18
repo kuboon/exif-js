@@ -179,7 +179,7 @@ const IFD1Tags: NumDict = {
 };
 
 export const TagsDict: Record<string, NumDict> = {
-  iptc: TiffTags,
+  tiff: TiffTags,
   exif: ExifTags,
   gps: GPSTags,
   thumbnail: IFD1Tags,

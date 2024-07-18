@@ -30,7 +30,7 @@ export type RawTagsGroup = TagsGroup<RawTagEntry>;
  * Simple typed, no tag name, no data conversion.
  * Also get thumbnail blob if exists.
  *
- * There are 4 tag groups: 'iptc', 'exif', 'gps', 'thumbnail'
+ * There are 4 tag groups: 'tiff', 'exif', 'gps', 'thumbnail'
  * which based on EXIF specification.
  *
  * Few tags like 'JpegIFOffset' which only for binary are removed.
@@ -91,18 +91,18 @@ function readExifSegment(ifd: DataView) {
   const ifdIter = eachIFDoffset(ifd, firstIFDOffset, littleEndian);
   const ifd0 = ifdIter.next();
   const ifd0offset = ifd0.value!; // main image IFD
-  const iptc: RawTagEntry[] = [
+  const tiff: RawTagEntry[] = [
     ...eachEntryInIFD(ifd, ifd0offset, littleEndian),
   ];
 
   const exif: RawTagEntry[] = getTagsByTagPointer(
-    iptc,
+    tiff,
     ifd,
     0x8769,
     littleEndian,
   ); // ExifIFDPointer
   const gps: RawTagEntry[] = getTagsByTagPointer(
-    iptc,
+    tiff,
     ifd,
     0x8825,
     littleEndian,
@@ -111,7 +111,7 @@ function readExifSegment(ifd: DataView) {
   if (ifd0.done) { // no thumbnail
     return {
       tags: [
-        { type: "iptc", rows: iptc },
+        { type: "tiff", rows: tiff },
         { type: "exif", rows: exif },
         { type: "gps", rows: gps },
       ] as RawTagsGroup[],
@@ -126,7 +126,7 @@ function readExifSegment(ifd: DataView) {
   );
   return {
     tags: [
-      { type: "iptc", rows: iptc },
+      { type: "tiff", rows: tiff },
       { type: "exif", rows: exif },
       { type: "gps", rows: gps },
       { type: "thumbnail", rows: thumbnail },
