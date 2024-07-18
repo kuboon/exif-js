@@ -1,126 +1,126 @@
-# Exif.js
+# @kuboon/exif
 
 A JavaScript library for reading
 [EXIF meta data](https://en.wikipedia.org/wiki/Exchangeable_image_file_format)
 from image files.
 
-You can use it on images in the browser, either from an image or a file input
-element. Both EXIF and IPTC metadata are retrieved. This package can also be
-used in AMD or CommonJS environments.
+This repo is forked from [Exif.js](https://github.com/exif-js/exif-js) but
+almost all codes are rewritten. There is no API compatibility with the original
+exif-js. (PullRequest of `exif-js.compat.js` is welcome.)
+
+## Overview
+
+### `frontend` module
+
+- `getArrayBufferFrom`: Get ArrayBuffer from various sources.
+
+### `exif` module
+Extracts EXIF metadata from JPEG ArrayBuffer,
+including 4 TagGroups: 'tiff', 'exif', 'gps', 'thumbnail' and `thumbnailBlob`.
+
+- `getEXIFrawTagsInJPEG`: Get raw EXIF data from ArrayBuffer of JPEG image.
+  Includes 4 `RawTagsGroup` and a `thumbnailBlob`.
+- `getEXIFenrichedTagsInJPEG`: Add human-readable values to
+  `getEXIFrawTagsInJPEG`.
+- `getEXIFminimalTagsInJPEG`: Get minimal EXIF tags from ArrayBuffer of JPEG
+  image.
+- `buildKeyValue`: Build key-value object from minimal EXIF tags.
 
 **Note**: The EXIF standard applies only to `.jpg` and `.tiff` images. EXIF
 logic in this package is based on the EXIF standard v2.2
 ([JEITA CP-3451, included in this repo](/spec/Exif2-2.pdf)).
 
-## Install
 
-Install `exif-js` through [NPM](https://www.npmjs.com/#getting-started):
+@example Basic exif access by key-value
+```ts
+import { exif } from "@kuboon/exif";
+const buf = await Deno.readFile("image.jpg");
 
-    npm install exif-js --save
+// `tags` contains 4 groups: 'tiff', 'exif', 'gps', 'thumbnail'
+const {tags, thumbnailBlob} = exif.getEXIFenrichedTagsInJPEG(buf)!;
 
-Or [Bower](http://bower.io/):
-
-    bower install exif-js --save
-
-Then add a `script` tag in your an HTML in the
-[best position](http://stackoverflow.com/questions/436411/where-is-the-best-place-to-put-script-tags-in-html-markup)
-referencing your local file.
-
-```html
-<script src="vendors/exif-js/exif-js"></script>
+// By default, 'tiff', 'exif', 'gps' TagGroup are all included.
+const kv = exif.buildKeyValue(tags);
+console.log(kv["DateTimeOriginal"]!.data);
 ```
 
-You can also use a minified version hosted on jsDelivr
-
-```html
-<script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+@example Get 'thumbnail' key-value
+Because some tags like `XResolution` conflicts with `tiff` TagGroup,
+You can get 'thumbnail' TagGroup separately.
+```ts
+const kv = exif.buildKeyValue(tags, 'thumbnail');
+console.log(kv["XResolution"]!.data);
 ```
 
-## Usage
+@example Low-level row access
+```ts
+import { exif } from "@kuboon/exif";
+const buf = await Deno.readFile("image.jpg");
+const {tags, thumbnailBlob} = exif.getEXIFenrichedTagsInJPEG(buf)!;
+console.log(exif.getRow(tags, "exif", "DateTimeOriginal")!.data);
+```
 
-The package adds a global `EXIF` variable (or AMD or CommonJS equivalent).
+### `getIPTCinJPEG`
 
-Start with calling the `EXIF.getData` function. You pass it an image as a
-parameter:
+Find "IPTC header" in jpeg binary and extract key-value pairs.
 
-- either an image from a `<img src="image.jpg">`
-- OR a user selected image in a `<input type="file">` element on your page.
+https://en.wikipedia.org/wiki/International_Press_Telecommunications_Council
 
-As a second parameter you specify a callback function. In the callback function
-you should use `this` to access the image with the aforementioned metadata you
-can then use as you want. That image now has an extra `exifdata` property which
-is a Javascript object with the EXIF metadata. You can access it's properties to
-get data like the _image caption_, the _date a photo was taken_ or it's
-_orientation_.
+### `getXMPinJPEG`
 
-You can get all tages with `EXIF.getTag`. Or get a single tag with
-`EXIF.getTag`, where you specify the tag as the second parameter. The tag names
-to use are listed in `EXIF.Tags` in `exif.js`.
+Scan `<?xpacket begin="?" id="W5M0MpCehiHzreSzNTczkc9d"?>` in jpeg binary and
+return XML string. (Not parsed)
 
-**Important**: Note that you have to wait for the image to be completely loaded,
-before calling `getData` or any other function. It will silently fail otherwise.
-You can implement this wait, by running your exif-extracting logic on the
-`window.onLoad` function. Or on an image's own `onLoad` function. For jQuery
-users please note that you can NOT (reliably) use jQuery's `ready` event for
-this. Because it fires before images are loaded. You could use $(window).load()
-instead of $(document.ready() (please note that `exif-js has NO dependency on
-jQuery or any other external library).
+https://en.wikipedia.org/wiki/Extensible_Metadata_Platform
 
-**JavaScript**:
+## Install and use on server
 
-```javascript
-window.onload = getExif;
+Totally different from the original exif-js. see https://jsr.io/@kuboon/exif for
+more details.
 
-function getExif() {
-  var img1 = document.getElementById("img1");
-  EXIF.getData(img1, function () {
-    var make = EXIF.getTag(this, "Make");
-    var model = EXIF.getTag(this, "Model");
-    var makeAndModel = document.getElementById("makeAndModel");
-    makeAndModel.innerHTML = `${make} ${model}`;
+Install `@kuboon/exif` through [jsr.io](https://jsr.io/@kuboon/exif).
+
+    # deno
+    deno add @kuboon/exif
+
+    # node.js
+    npx jsr add @kuboon/exif
+
+## For browser
+
+You can import frontend module from `esm.sh/jsr` (not documented on released
+version yet,
+[but it works](https://github.com/esm-dev/esm.sh/commit/32cd2bd931f33118cbc96ee89583f20718c58fbf)).
+
+`getArrayBufferFrom` accepts one of `HTMLImageElement`, `HTMLInputElement` (with
+type="file"), `URL`, url `string`, `Blob` (or `File`) and returns ArrayBuffer.
+Then you can do same as server side.
+
+```html
+<script type="module">
+  import { getArrayBufferFrom } from "https://esm.sh/jsr/@kuboon/exif@0.1.2/frontend";
+  import { exif } from "https://esm.sh/jsr/@kuboon/exif@0.1.2?exports=exif";
+
+  const fileInput = document.getElementById("file-input");
+  fileInput.addEventListener("change", async (e) => {
+    const buf = await getArrayBufferFrom(fileInput);
+    const ret = exif.getEXIFminimalTagsInJPEG(buf);
+    if (ret === null) {
+      /** @type {FileList} */
+      const files = e.target.files;
+      alert("No EXIF data found in image '" + files[0].name + "'.");
+      return;
+    }
+    const kv = exif.buildKeyValue(ret.tags);
+    alert(JSON.stringify(kv, null, "\t"));
   });
-
-  var img2 = document.getElementById("img2");
-  EXIF.getData(img2, function () {
-    var allMetaData = EXIF.getAllTags(this);
-    var allMetaDataSpan = document.getElementById("allMetaDataSpan");
-    allMetaDataSpan.innerHTML = JSON.stringify(allMetaData, null, "\t");
-  });
-}
+</script>
+<input type="file" id="file-input" />
 ```
-
-**HTML**:
-
-```html
-<img src="image1.jpg" id="img1" />
-<pre>Make and model: <span id="makeAndModel"></span></pre>
-<br/>
-<img src="image2.jpg" id="img2" />
-<pre id="allMetaDataSpan"></pre>
-<br/>
-```
-
-Note there are also alternate tags, such the `EXIF.TiffTags`. See the source
-code for the full definition and use. You can also get back a string with all
-the EXIF information in the image pretty printed by using `EXIF.pretty`. Check
-the included [index.html](/exif-js/exif-js/blob/master/index.html).
-
-**XMP** Since issue #53 was merged also extracting of XMP data is supported. To
-not slow down this is optional, and you need to call `EXIF.enableXmp();` before
-using `EXIF.getData()`.
-
-Please refer to the [source code](exif.js) for more advanced usages such as
-getting image data from a
-[File/Blob](https://developer.mozilla.org/en/docs/Web/API/Blob) object
-(`EXIF.readFromBinaryFile`).
 
 ## Contributions
 
-This is an [open source project](LICENSE.md). Please contribute by forking this
-repo and issueing a pull request. The project has had notable contributions
-already, like reading ITPC data.
+Please feel free to open an issue or submit a pull request. I'm happy to review
+and merge them (until I lose interest for this repo).
 
-You can also contribute by
-[filing bugs or new features please issue](/exif-js/issues). Or improve the
-documentation. Please update this README when you do a pull request of proposed
-changes in base functionality.
+You need `deno test` for local testing. https://deno.com
