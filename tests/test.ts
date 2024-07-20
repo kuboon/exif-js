@@ -66,8 +66,8 @@ Deno.test({
   fn: () => {
     const ret = getEXIFminimalTagsInJPEG(bin.buffer);
     assert(ret);
-    console.log(getRow(ret.tags, "tiff", "XResolution"));
-    console.log(getRow(ret.tags, "thumbnail", "XResolution"));
+    // console.log(getRow(ret.tags, "tiff", "XResolution"));
+    // console.log(getRow(ret.tags, "thumbnail", "XResolution"));
   },
 });
 Deno.test({
@@ -76,7 +76,8 @@ Deno.test({
     const ret = getEXIFminimalTagsInJPEG(bin.buffer);
     assert(ret);
     const kv = buildKeyValue(ret.tags);
-    console.log(kv);
+    assertEquals(Object.keys(kv).length, 42);
+    // console.log(kv);
   },
 });
 

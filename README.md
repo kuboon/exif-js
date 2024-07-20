@@ -15,8 +15,9 @@ exif-js. (PullRequest of `exif-js.compat.js` is welcome.)
 - `getArrayBufferFrom`: Get ArrayBuffer from various sources.
 
 ### `exif` module
-Extracts EXIF metadata from JPEG ArrayBuffer,
-including 4 TagGroups: 'tiff', 'exif', 'gps', 'thumbnail' and `thumbnailBlob`.
+
+Extracts EXIF metadata from JPEG ArrayBuffer, including 4 TagGroups: 'tiff',
+'exif', 'gps', 'thumbnail' and `thumbnailBlob`.
 
 - `getEXIFrawTagsInJPEG`: Get raw EXIF data from ArrayBuffer of JPEG image.
   Includes 4 `RawTagsGroup` and a `thumbnailBlob`.
@@ -30,33 +31,34 @@ including 4 TagGroups: 'tiff', 'exif', 'gps', 'thumbnail' and `thumbnailBlob`.
 logic in this package is based on the EXIF standard v2.2
 ([JEITA CP-3451, included in this repo](/spec/Exif2-2.pdf)).
 
-
 @example Basic exif access by key-value
+
 ```ts
 import { exif } from "@kuboon/exif";
 const buf = await Deno.readFile("image.jpg");
 
 // `tags` contains 4 groups: 'tiff', 'exif', 'gps', 'thumbnail'
-const {tags, thumbnailBlob} = exif.getEXIFenrichedTagsInJPEG(buf)!;
+const { tags, thumbnailBlob } = exif.getEXIFenrichedTagsInJPEG(buf)!;
 
 // By default, 'tiff', 'exif', 'gps' TagGroup are all included.
 const kv = exif.buildKeyValue(tags);
 console.log(kv["DateTimeOriginal"]!.data);
 ```
 
-@example Get 'thumbnail' key-value
-Because some tags like `XResolution` conflicts with `tiff` TagGroup,
-You can get 'thumbnail' TagGroup separately.
+@example Get 'thumbnail' key-value Because some tags like `XResolution`
+conflicts with `tiff` TagGroup, You can get 'thumbnail' TagGroup separately.
+
 ```ts
-const kv = exif.buildKeyValue(tags, 'thumbnail');
+const kv = exif.buildKeyValue(tags, "thumbnail");
 console.log(kv["XResolution"]!.data);
 ```
 
 @example Low-level row access
+
 ```ts
 import { exif } from "@kuboon/exif";
 const buf = await Deno.readFile("image.jpg");
-const {tags, thumbnailBlob} = exif.getEXIFenrichedTagsInJPEG(buf)!;
+const { tags, thumbnailBlob } = exif.getEXIFenrichedTagsInJPEG(buf)!;
 console.log(exif.getRow(tags, "exif", "DateTimeOriginal")!.data);
 ```
 
