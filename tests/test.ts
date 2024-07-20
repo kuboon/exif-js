@@ -66,8 +66,8 @@ Deno.test({
   fn: () => {
     const ret = getEXIFminimalTagsInJPEG(bin.buffer);
     assert(ret);
-    // console.log(getRow(ret.tags, "tiff", "XResolution"));
-    // console.log(getRow(ret.tags, "thumbnail", "XResolution"));
+    assertEquals(getRow(ret.tags, "tiff", "XResolution")!.data, 300);
+    assertEquals(getRow(ret.tags, "thumbnail", "XResolution")!.data, 72);
   },
 });
 Deno.test({
